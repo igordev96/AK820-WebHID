@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useReducer, useRef, useState } from 'react';
+import { AdvancedDrawer } from '@/features/advanced/AdvancedDrawer';
 import { AppHeader } from '@/features/device/AppHeader';
 import { useDevice } from '@/features/device/useDevice';
 import { KeyInspector } from '@/features/editor/KeyInspector';
@@ -51,6 +52,7 @@ export function App() {
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [confirming, setConfirming] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
 
   const transfer = useMemo(() => {
@@ -179,6 +181,18 @@ export function App() {
 
   const handleCancelRestore = useCallback(() => setConfirming(false), []);
 
+  const handleOpenAdvanced = useCallback(() => {
+    if (!connected || busyRef.current) return;
+    setAdvancedOpen(true);
+  }, [connected]);
+
+  const handleCloseAdvanced = useCallback(() => setAdvancedOpen(false), []);
+
+  const handleAdvancedBusy = useCallback((value: boolean) => {
+    busyRef.current = value;
+    setBusy(value);
+  }, []);
+
   const handleConnect = useCallback(() => {
     void device.connect();
   }, [device]);
@@ -204,6 +218,8 @@ export function App() {
         logOpen={logOpen}
         onConnect={handleConnect}
         onDisconnect={handleDisconnect}
+        onAdvanced={handleOpenAdvanced}
+        advancedDisabled={!connected || busy}
         onToggleLog={() => setLogOpen((open) => !open)}
       />
 
@@ -252,6 +268,14 @@ export function App() {
         open={logOpen}
         onToggle={() => setLogOpen((open) => !open)}
         onClear={clearLog}
+      />
+
+      <AdvancedDrawer
+        open={advancedOpen}
+        device={device.device}
+        log={log}
+        onClose={handleCloseAdvanced}
+        onBusyChange={handleAdvancedBusy}
       />
     </div>
   );

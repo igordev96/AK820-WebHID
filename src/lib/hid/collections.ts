@@ -1,9 +1,17 @@
 import { CONFIG_USAGE, CONFIG_USAGE_PAGE } from './protocol';
 
+export type CollectionReport = {
+  readonly reportId: number;
+  readonly items: readonly unknown[];
+};
+
 export type CollectionNode = {
   readonly usagePage: number;
   readonly usage: number;
   readonly children?: readonly CollectionNode[];
+  readonly inputReports?: readonly CollectionReport[];
+  readonly outputReports?: readonly CollectionReport[];
+  readonly featureReports?: readonly CollectionReport[];
 };
 
 export type FlatCollection = {

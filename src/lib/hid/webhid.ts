@@ -1,10 +1,15 @@
-import { findConfigCollection } from './collections';
+import { findConfigCollection, type CollectionReport } from './collections';
 import { CONFIG_USAGE, CONFIG_USAGE_PAGE, PRODUCT_IDS, VENDOR_ID } from './protocol';
+
+export type WebHidReportInfo = CollectionReport;
 
 export type WebHidCollection = {
   readonly usagePage: number;
   readonly usage: number;
   readonly children?: readonly WebHidCollection[];
+  readonly inputReports?: readonly WebHidReportInfo[];
+  readonly outputReports?: readonly WebHidReportInfo[];
+  readonly featureReports?: readonly WebHidReportInfo[];
 };
 
 export type WebHidFilter = {

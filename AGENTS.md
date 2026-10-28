@@ -128,13 +128,14 @@ Never claim "works" from a `0x01` commit. Keep `docs/02-hardware-tests.md` factu
 
 ## Refactor state
 
-Phases 1 to 5 (core) are complete on `refactor/react`, based on tag `v1.0.1`. `main` still
-holds the v1 release. The toolchain, keymap, HID transport and transfer service, editor
-state/persistence, and the React editor are ported. Connection, editing, upload, restore, the log
-drawer and the responsive board are wired against the fake device.
+Phases 1 to 5 are complete on `refactor/react`, based on tag `v1.0.1`. `main` still holds the v1
+release. The toolchain, keymap, HID transport and transfer service, editor state/persistence, the
+React editor and the advanced drawer are ported. Connection, editing, upload, restore, the log
+drawer, diagnostics, the deep probe, the mailbox probe, the raw command card and the responsive
+board are wired against the fake device.
 
-Still to port: the advanced diagnostics, the deep probe and the raw command card. Hardware Test 9
-has not run.
+Next is the visual polish pass, then the v1 docs rewrite and hardware Test 9. No hardware has
+confirmed the React build yet.
 
 The v1 files `index.html` (old product), `serve.js`, `start.cmd`, `tools/check-js.js`,
 `tools/kmtest.js` and `tools/editortest2.js` are legacy. Do not use them as the test path. They

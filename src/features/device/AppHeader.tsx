@@ -1,4 +1,4 @@
-import { Terminal, Unplug, Usb } from 'lucide-react';
+import { Settings2, Terminal, Unplug, Usb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { DeviceState } from './useDevice';
@@ -10,6 +10,8 @@ type AppHeaderProps = {
   logOpen: boolean;
   onConnect: () => void;
   onDisconnect: () => void;
+  onAdvanced: () => void;
+  advancedDisabled: boolean;
   onToggleLog: () => void;
 };
 
@@ -22,6 +24,8 @@ export function AppHeader({
   logOpen,
   onConnect,
   onDisconnect,
+  onAdvanced,
+  advancedDisabled,
   onToggleLog,
 }: AppHeaderProps) {
   const connected = device.status === 'connected';
@@ -87,6 +91,17 @@ export function AppHeader({
               {device.status === 'connecting' ? 'Connecting…' : 'Connect keyboard'}
             </Button>
           )}
+
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label="Advanced"
+            disabled={advancedDisabled}
+            onClick={onAdvanced}
+          >
+            <Settings2 aria-hidden="true" />
+            <span className="hidden sm:inline">Advanced</span>
+          </Button>
 
           <Button
             variant="ghost"

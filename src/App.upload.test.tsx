@@ -64,3 +64,45 @@ describe('App upload flow', () => {
     expect(screen.getByRole('log')).toHaveTextContent(/Upload accepted/);
   }, 15000);
 });
+
+describe('App advanced drawer', () => {
+  it('opens the advanced tools once the keyboard is connected and closes with Escape', async () => {
+    const device: WebHidDevice = {
+      opened: false,
+      productName: 'AK820',
+      vendorId: 0x0c45,
+      productId: 0x8009,
+      collections: [{ usagePage: 0xff13, usage: 0x0001 }],
+      open: async () => {},
+      close: async () => {},
+      sendFeatureReport: async () => {},
+      receiveFeatureReport: async () => {
+        throw new Error('no reply');
+      },
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    };
+
+    const hid: WebHid = {
+      requestDevice: async () => [device],
+      getDevices: async () => [],
+    };
+    Object.defineProperty(navigator, 'hid', { value: hid, configurable: true });
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(screen.getByRole('button', { name: 'Advanced' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: /connect keyboard/i }));
+    await screen.findByText('AK820');
+    expect(screen.getByRole('button', { name: 'Advanced' })).toBeEnabled();
+
+    await user.click(screen.getByRole('button', { name: 'Advanced' }));
+    const dialog = screen.getByRole('dialog', { name: 'Advanced' });
+    expect(within(dialog).getByRole('tab', { name: 'Diagnostics' })).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'Advanced' })).not.toBeInTheDocument();
+  });
+});

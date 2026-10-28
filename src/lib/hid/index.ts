@@ -27,3 +27,17 @@ export type {
 } from './transfer';
 export { buildWebHidFilters, getWebHid, pickDevice } from './webhid';
 export type { WebHid, WebHidCollection, WebHidDevice, WebHidFilter } from './webhid';
+export { diagnose } from './diagnostics';
+export type {
+  DiagnoseOptions,
+  DiagnosticDevice,
+  DiagnosticResult,
+  DiagnosticStatus,
+  DiagnosticStep,
+} from './diagnostics';
+export { runDeepProbe } from './deepProbe';
+export type { DeepProbeOptions, DeepProbeResult } from './deepProbe';
+export { runMailboxProbe } from './mailboxProbe';
+export type { MailboxProbeOptions, MailboxProbeResult } from './mailboxProbe';
+export { listenReplies, parseHex, sendRawCommand } from './raw';
+export type { ListenOptions } from './raw';
