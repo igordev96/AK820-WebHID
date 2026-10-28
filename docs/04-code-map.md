@@ -53,7 +53,7 @@ kmTransportFailed(steps)      chunks/aborted/begin≠0x01 → transport failure
 ### Table building
 
 ```
-modBit(usage)                 0xE0..0xE7 → 1,2,4,8,1,2,4,8
+modBit(usage)                 0xE0..0xE7 → 1,2,4,8,16,32,64,128
 encodeRecord(usage, media?)   → 4 bytes: 02 <mod> <usage> 00 (keyboard)
                                          03 <lo> <hi> 00   (consumer, media=true)
 parseMapText(text)            "idx [c:]usage name" per line, # comments

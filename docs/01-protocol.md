@@ -154,8 +154,9 @@ vendor's key object carries at `[key+0x18]` (which comes from the DB column `mac
 | `0x06` | `06 <macro-id> <m2> <m3>` | macro reference (not decoded) | 3 (`0x418733`) |
 | `0x07` | `07 <b1> <b2> <b3>` | unknown, unused by this layout | 0x0D (`0x41866F`) |
 
-Modifier bits for record `0x02` (`0x451CA0`): `0x01` Ctrl, `0x02` Shift, `0x04` Alt, `0x08` Win,
-for both left and right versions. A key that *is* a modifier is encoded as
+Modifier bits for record `0x02` (`0x451CA0`): `0x01` Left Ctrl, `0x02` Left Shift, `0x04` Left
+Alt, `0x08` Left Win, `0x10` Right Ctrl, `0x20` Right Shift, `0x40` Right Alt, `0x80` Right Win.
+A key that *is* a modifier is encoded as
 `02 <bit> 00 00` — the usage byte stays zero (confirmed: LShift idx 73 = `02 02 00 00`,
 LCtrl idx 91 = `02 01 00 00`). The vendor rewrites byte 2 back to 0 for usages `0xE0..0xE7`
 (`0x418648` / `0x418662`).

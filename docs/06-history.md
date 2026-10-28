@@ -83,6 +83,9 @@ WebHID won because it is the only option with zero install and a stable API for 
 * **A usage number never identifies the page.** 0xE2 is Left Alt and Mute, and 0xCD (Play/Pause)
   is below 0xE7 while also being a reserved keyboard usage. Carry the page explicitly (`media` /
   `c:`); range heuristics are wrong.
+* **Right-hand modifiers use the high bits.** `0x451CA0` maps `0xE0..0xE7` to
+  `1,2,4,8,16,32,64,128`, not a repeat of the left-hand values. The old prose said otherwise; the
+  encoder was already correct, and the docs were fixed during the React refactor.
 
 ## 5. Open threads
 
