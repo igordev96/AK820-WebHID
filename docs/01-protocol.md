@@ -160,8 +160,8 @@ for both left and right versions. A key that *is* a modifier is encoded as
 LCtrl idx 91 = `02 01 00 00`). The vendor rewrites byte 2 back to 0 for usages `0xE0..0xE7`
 (`0x418648` / `0x418662`).
 
-The driver only emits `0x02` records today. Media keys are the next step and need `0x03`;
-see `docs/04-media-keys.md`.
+The driver emits `0x02` records for keyboard keys and `0x03` records for media keys; see
+`docs/03-media-keys.md`.
 
 ---
 

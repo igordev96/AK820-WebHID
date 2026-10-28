@@ -1,4 +1,4 @@
-# 06 · Local setup
+# 05 · Local setup
 
 The driver installs nothing. Node.js is only needed for the local static server and the checks.
 
@@ -48,9 +48,9 @@ This starts a static server on `127.0.0.1:8765` and opens <http://localhost:8765
 ## 3. Verify the checkout
 
 ```bat
-node tools\check-js.js index.html
-node tools\kmtest.js index.html
-node tools\editortest2.js index.html
+node tools/check-js.js index.html
+node tools/kmtest.js index.html
+node tools/editortest2.js index.html
 ```
 
 `npm test` runs the same three checks (there are no dependencies to install), and `npm start`
@@ -76,7 +76,7 @@ fn f2 media from storage: true 226
 ```
 
 The harnesses have no DOM and no device: they slice the relevant code out of `index.html` by
-marker comments (see `docs/05` §4).
+marker comments (see `docs/04-code-map.md` §4).
 
 ---
 

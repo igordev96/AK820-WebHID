@@ -1,4 +1,4 @@
-# 08 · History and decisions
+# 06 · History and decisions
 
 Short record of how the project got here, so the next maintainer does not re-litigate settled
 choices or repeat dead ends.
@@ -50,13 +50,13 @@ WebHID won because it is the only option with zero install and a stable API for 
    `fnlayer_disable` skip list, and that zero = firmware default. Implemented the layer toggle,
    zero-slot semantics, locked keys, persistence, and verified overrides + clearing on hardware.
 10. **Main-PC revalidation and hygiene** — fresh WebHID authorisation on the new machine, no-op
-    factory/zero uploads accepted, stock behaviour confirmed by typing (`docs/03` Test 7).
+    factory/zero uploads accepted, stock behaviour confirmed by typing (`docs/02-hardware-tests.md` Test 7).
     Removed a stray `?` before the doctype (the page had always been rendering in quirks mode),
     made `sendTable` abort when the announce is refused, and refused top-layer usage `0x00`.
 11. **Media keys** — the editor now stores the usage page per key instead of guessing it from the
     number (`0xE2` is Left Alt *and* Mute; `0xCD` is below `0xE7`). Added a Media picker group,
     the `c:` raw-text token, `03 <lo> <hi> 00` records and Fn persistence with `[idx, usage, 1]`.
-    Mute, Volume up and Volume down verified on the Fn layer, then cleared (`docs/03` Test 8).
+    Mute, Volume up and Volume down verified on the Fn layer, then cleared (`docs/02-hardware-tests.md` Test 8).
 12. **Repository hygiene** — added `AGENTS.md`, `.editorconfig`/`.gitattributes`, and LF
     normalisation for project-owned text. The private lab also moved to Conventional Commits and
     stopped tracking `re/node_modules`; this public repository starts with a clean history and
@@ -86,7 +86,7 @@ WebHID won because it is the only option with zero install and a stable API for 
 
 ## 5. Open threads
 
-* Media/consumer records — **done and verified** (`docs/03` Test 8); the `07 …` form was not
+* Media/consumer records — **done and verified** (`docs/02-hardware-tests.md` Test 8); the `07 …` form was not
   needed.
 * `0x0D` record (`07 …`), internal types 5 and 8–11, macro records — undecoded, not needed.
 * Commit reply byte 4 (`0x77`) — unexplained.

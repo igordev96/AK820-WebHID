@@ -1,9 +1,9 @@
-# 03 · Hardware tests (what was actually run)
+# 02 · Hardware tests (what was actually run)
 
 Board: **AJAZZ AK820 Pro**, VID/PID `0C45:8009`, US layout, 81 keys, firmware as shipped in
 `..._RGB_V1.0.0.5`. Host: Windows, Chrome (WebHID). Every write below was accepted with
 `commit 0x01`, and the *keyboard behaviour* was checked by the person at the keyboard — the
-mailbox alone is not evidence (see docs/01 §3).
+mailbox alone is not evidence (see docs/01-protocol.md §3).
 
 ---
 

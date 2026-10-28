@@ -1,4 +1,4 @@
-# 05 · Code map — `index.html`
+# 04 · Code map: `index.html`
 
 One file, no dependencies, no build step. Open it from `http://localhost:8765` (WebHID requires
 a secure context; `localhost` counts). Line numbers below drift as the file changes — the

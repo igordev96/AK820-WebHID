@@ -1,156 +1,143 @@
-# AK820 Pro — WebHID key remapper
+# AK820 Pro WebHID key remapper
 
-An unofficial, install-free key remapper for the **AJAZZ AK820 Pro**, running entirely in the
-browser over WebHID. No driver, no admin rights, no build step — just a local page and a
-Chromium browser.
+An unofficial browser tool for remapping the AJAZZ AK820 Pro. It uses WebHID to talk to the
+keyboard's configuration interface, so there is nothing to install and no admin rights to ask
+for. It runs in Chrome, Edge or Opera on desktop.
 
-> **Unofficial community project.** Not affiliated with AJAZZ. This page writes the keyboard's
-> configuration table, so use it at your own risk. The vendor application remains the recovery
-> path. `AK820 Pro` is a trademark of its owner; it is used here only to describe compatibility.
+Current release: 1.0.0.
 
----
+AK820 Pro is a trademark of its owner. This project is not affiliated with AJAZZ. The tool writes
+the key table, so keep the vendor application available for recovery.
 
 ## What it does
 
-| Feature | Status |
-|---|---|
-| Connect and inspect the configuration interface (`0xFF13/0x0001`) | working |
-| Remap any of the 81 keys on the **top layer** | verified on hardware |
-| Remap keys on the **Fn layer** (overrides, firmware default = zero) | verified on hardware |
-| **Media / consumer keys** (mute, volume, play/pause, tracks, browser, …) | Mute and volume verified on hardware; other consumer usages use the same record type |
-| Restore the factory top-layer map | verified on hardware |
-| Clear all Fn overrides | verified on hardware |
-| Read the current layout back from the keyboard | **impossible** — the firmware has no read-back |
-| Knob remapping | out of scope (rotation/press are input-only reports) |
-| Bluetooth mode | not supported by this interface |
+- Remaps any of the 81 keys on the top layer.
+- Sets Fn-layer overrides. Keys you leave alone keep the firmware default.
+- Assigns consumer keys: mute, volume, play/pause, track skip, browser back and forward,
+  calculator and email.
+- Restores the factory top map or clears every Fn override.
 
-Supported device ids: VID `0x0C45`, PIDs `0x8009` (tested), `0x800A`, `0xFDFD` (untested).
-Only the configuration collection is used; normal typing, the knob and media input keep working.
+Top-layer and Fn-layer remapping and both restore actions were tested on an AK820 Pro
+(VID `0C45`, PID `8009`). Media testing covered Mute, Volume up and Volume down. The other
+consumer functions use the same record format but were not each tested.
 
----
+## Supported devices
+
+VID `0C45` with PID `8009` (tested), `800A` or `FDFD`. Only the `8009` board has been used on
+hardware. Other AK820 variants may share the protocol, but they have not been tested.
+
+## What it cannot do
+
+The firmware has no read-back command, so the page cannot show the layout stored on the keyboard.
+It assumes the top layer is factory and treats an all-zero Fn table as the default. Fn overrides
+are saved in this browser.
+
+The knob is input-only, so it cannot be remapped. Bluetooth mode does not expose the
+configuration interface.
 
 ## Requirements
 
-- **Chrome, Edge or Opera on desktop** (WebHID is unavailable in Firefox, Safari and on mobile).
-- **USB (wired) mode** — Bluetooth does not expose the configuration collection.
-- **Close the AJAZZ desktop app** while using this page. Only one program can hold the interface.
-- The page must be served from `http://localhost` or HTTPS. WebHID needs a secure context.
-
----
+- Chrome, Edge or Opera on desktop. Firefox, Safari and mobile browsers do not support WebHID.
+- A USB connection. Bluetooth mode does not expose the interface.
+- Close the AJAZZ desktop app while this page is connected.
+- Serve the page from `http://localhost` or HTTPS. WebHID needs a secure context.
 
 ## Quick start
 
-```bat
-:: Windows
-start.cmd
-```
+1. Run `start.cmd` on Windows, or `node serve.js` on any OS with Node.js 22.5 or newer.
+2. Open <http://localhost:8765/>.
+3. Click **Connect keyboard** and choose the AK820 in the browser chooser.
+4. Pick a key, choose a function, and click **Upload changes**.
 
-That starts a local server on <http://localhost:8765/> and opens it. On any OS you can instead run:
+`serve.js` only serves the files. The tool itself is `index.html`, with no build step and no
+dependencies.
 
-```bash
-node serve.js
-```
-
-Then open <http://localhost:8765/>, click **Connect keyboard**, and pick the device in Chrome's
-chooser. No installation is involved; `serve.js` is only a static file server.
-
-> This repository is source-only. Serve it yourself; there is no hosted copy to trust.
-
----
+This repository is source-only. Run it locally; there is no hosted copy.
 
 ## Using the editor
 
-1. **Top layer** — click a key, choose the function in **Sends**, then **Upload changes**.
-   The whole 576-byte table is re-sent each time; the firmware has no single-key command.
-2. **Fn layer** — the same board, but it edits what each key does while Fn is held. Only the keys
-   you set are written; every other slot stays zero, which means “firmware default”.
-   Six keys marked `fnlayer_disable` by the vendor layout are read-only there.
-3. **Media** — the **Media** group assigns consumer functions such as Mute, Volume up/down,
-   Play/Pause, tracks, browser back/forward, calculator and email. Media records use a different
-   record type, so the raw box shows a `c:` prefix (for example `c:0xE2` for Mute). The prefix is
-   required because `0xE2` is also keyboard Left Alt.
-4. **Restore** — **Reset this key** / **Restore factory map** on the top layer, and
-   **Back to firmware default** / **Clear all Fn overrides** on the Fn layer.
+The top layer is the table the keyboard types without Fn. Click a key, choose the new function
+under **Sends**, then upload. Every upload sends the full 576-byte table because the firmware has
+no single-key command.
 
-### The one limitation that shapes everything
+The Fn layer tab edits what each key does while Fn is held. Only the keys you change are written;
+every other slot stays zero, which means the firmware handles that combination. Six keys marked
+`fnlayer_disable` by the vendor layout are read-only there.
 
-The keyboard cannot report its configuration back. The page therefore:
+The Media group assigns consumer functions. Their records use a different type, and the raw box
+shows the `c:` prefix, for example `c:0xE2` for Mute. The prefix is required because `0xE2` is
+also keyboard Left Alt.
 
-- assumes the **top layer is the factory map** unless you changed it elsewhere;
-- treats an **all-zero Fn table** as the firmware default;
-- remembers the Fn overrides it wrote in `localStorage` for this browser profile.
+**Reset this key** restores one top-layer key. **Restore factory map** rewrites the whole top
+layer. On the Fn layer, **Back to firmware default** clears one override and **Clear all Fn
+overrides** clears the layer.
 
-If you remapped keys with the vendor app before using this page, the page cannot see that layout,
-and uploading the factory map will overwrite it. Restore the vendor app's defaults first if you
-need to keep it.
+## The missing read-back
 
----
+If you remapped keys in the vendor app, this page cannot see that layout. Uploading the factory
+map will overwrite it. Restore the vendor app's defaults first if you need to keep it.
+
+Fn overrides are stored in `localStorage` under `ak820.fn.overrides` in this browser profile.
+Clearing site data forgets them. They do not travel to another browser or machine.
 
 ## Recovery
 
-- **Undo one change:** select the key → **Reset this key** (top) or **Back to firmware default**
-  (Fn) → **Upload changes**.
-- **Undo a layer:** **Restore factory map** (top) or **Clear all Fn overrides** (Fn).
-- **If the page refuses a transfer:** it aborts before staging data; nothing changed. Replug the
-  keyboard and try again. Close any program that may hold the interface.
-- **If the keyboard misbehaves:** unplug/replug it, upload the factory map again, or use the
-  vendor application's restore function. The vendor app is the last-resort recovery path.
-- **Never run two uploads at once.** The page has a lock; do not work around it.
+Undo a single change with **Reset this key** on the top layer or **Back to firmware default** on
+the Fn layer, then upload.
 
----
+Undo a whole layer with **Restore factory map** or **Clear all Fn overrides**.
+
+If the page refuses a transfer, it stops before staging data, so the keyboard is unchanged.
+Unplug and replug the keyboard, then try again. Close any other program that may hold the
+interface.
+
+If the keyboard stops responding or types the wrong keys, unplug and replug it, upload the factory
+map again, or use the vendor application's restore function.
+
+Do not start two uploads at once. The page locks the controls during a transfer; leave that lock
+in place.
+
+## Documentation
+
+The full reading order is in [docs/README.md](docs/README.md).
+
+| Page | Contents |
+|---|---|
+| [docs/01-protocol.md](docs/01-protocol.md) | device, report framing, mailbox, table format, layers |
+| [docs/02-hardware-tests.md](docs/02-hardware-tests.md) | hardware runs and what they proved |
+| [docs/03-media-keys.md](docs/03-media-keys.md) | consumer records and the explicit page marker |
+| [docs/04-code-map.md](docs/04-code-map.md) | how `index.html` is organised |
+| [docs/05-setup.md](docs/05-setup.md) | local setup, checks and troubleshooting |
+| [docs/06-history.md](docs/06-history.md) | decisions, dead ends and lessons |
+| [docs/key-index-table.md](docs/key-index-table.md) | key index, usage, Fn lock and geometry |
+
+The protocol notes were written for interoperability. Vendor binaries, layout XML, artwork and
+the installer are not distributed here. A few documents mention the private research material
+they were derived from.
 
 ## Development
 
-The product is one self-contained file: `index.html`. No dependencies and no build step.
+The driver is one file: `index.html`. There are no dependencies and no build step.
 
 ```bat
-:: checks (Node.js 22.5+; all must pass)
-node tools\check-js.js index.html
-node tools\kmtest.js index.html
-node tools\editortest2.js index.html
+node tools/check-js.js index.html
+node tools/kmtest.js index.html
+node tools/editortest2.js index.html
 ```
 
-There are no dependencies to install; `npm test` runs the same three checks, and `npm start` runs
-`serve.js`.
+All three must pass before a commit. `npm test` runs the same checks. `tools/kmtest.js` asserts
+the 576-byte table byte for byte. `tools/editortest2.js` tests the editor with a fake DOM.
+`tools/hidwatch.cs` and `tools/hidcaps.cs` are optional HID probes; they need the .NET Framework
+compiler and are not needed to use the page.
 
-- `tools/kmtest.js` asserts the 576-byte table byte for byte (keyboard, modifiers, media, trailer).
-- `tools/editortest2.js` is a fake-DOM test of the editor for both layers.
-- `tools/hidwatch.cs` / `hidcaps.cs` are optional HID probes, compiled with the .NET Framework
-  compiler; they are not needed to use the page.
-
-```
-index.html            the driver (single file)
-serve.js, start.cmd   local static server and launcher
-docs/                 protocol, hardware log, code map, setup, history, key table
-tools/                checks and example HID probes
-```
-
-Documentation:
-
-| Page | What it covers |
-|---|---|
-| `docs/01-protocol.md` | the wire protocol, byte for byte |
-| `docs/03-hardware-tests.md` | what was actually run on hardware, and what it proved |
-| `docs/04-media-keys.md` | consumer-key encoding and why the page marker is explicit |
-| `docs/05-code-map.md` | how `index.html` is put together |
-| `docs/06-setup.md` | local setup, checks, troubleshooting |
-| `docs/08-history.md` | decisions, dead ends and lessons |
-| `docs/key-index-table.md` | generated index → key → usage → geometry table |
-
-The protocol was recovered for interoperability. Vendor binaries, layout XML, artwork and the
-vendor installer are **not** distributed here; only the original driver, tests and documentation
-are. Some documents mention the private research material they were derived from.
-
----
+`index.html` is sliced by `tools/kmtest.js` and `tools/editortest2.js` using banner comments. Keep
+those markers in place; [docs/04-code-map.md](docs/04-code-map.md) lists them.
 
 ## Privacy
 
 The page makes no network requests and has no telemetry. The only stored data is the Fn overrides
-in this browser's `localStorage` (`ak820.fn.overrides`); clearing site data forgets them.
-
----
+in `localStorage` under `ak820.fn.overrides`.
 
 ## License
 
-MIT — see [LICENSE](LICENSE). The documentation is covered by the same license.
-This project is not affiliated with or endorsed by AJAZZ.
+MIT. See [LICENSE](LICENSE). The documentation uses the same license.

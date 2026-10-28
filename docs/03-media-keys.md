@@ -1,9 +1,9 @@
-# 04 · Media / consumer keys
+# 03 · Media / consumer keys
 
-**Goal:** let the editor assign media functions (play/pause, volume, mute, track skip…) to a key,
-on either layer. This matters most on the Fn layer, which is what those keys are for.
+The editor assigns media functions (play/pause, volume, mute, track skip…) to a key, on either
+layer. This matters most on the Fn layer, which is what those keys are for.
 
-The encoding is **known and verified on hardware** (`docs/03` Test 8): Mute, Volume up and
+The encoding is **known and verified on hardware** (`docs/02-hardware-tests.md` Test 8): Mute, Volume up and
 Volume down all worked on the Fn layer, and clearing the slot restored the firmware default.
 Nothing here needs more reverse engineering.
 
@@ -158,12 +158,12 @@ If the commit is `0x01` but nothing happens:
   combination — if the firmware emits `03 E2 00`, the host should act on it even if nothing
   visible happens.
 
-Record the result in `docs/03-hardware-tests.md` and update the “what works” table in the
+Record the result in `docs/02-hardware-tests.md` and update the “what works” table in the
 README.
 
 ### Result (28 Oct 2026)
 
-Verified, see `docs/03` Test 8. All four uploads committed `0x01` and the user confirmed the
+Verified, see `docs/02-hardware-tests.md` Test 8. All four uploads committed `0x01` and the user confirmed the
 behaviour at the keyboard:
 
 * Mute (`03 E2 00 00`) → Windows mute/OSD;
