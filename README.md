@@ -4,7 +4,7 @@ An unofficial browser tool for remapping the AJAZZ AK820 Pro. It uses WebHID to 
 keyboard's configuration interface, so there is nothing to install and no admin rights to ask
 for. It runs in Chrome, Edge or Opera on desktop.
 
-Current release: 1.0.0.
+Current release: 1.0.1.
 
 AK820 Pro is a trademark of its owner. This project is not affiliated with AJAZZ. The tool writes
 the key table, so keep the vendor application available for recovery.
