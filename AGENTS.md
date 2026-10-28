@@ -128,9 +128,10 @@ Never claim "works" from a `0x01` commit. Keep `docs/02-hardware-tests.md` factu
 
 ## Refactor state
 
-Phase 1 of the React refactor is in progress on `refactor/react`, based on tag `v1.0.1`. `main`
-still holds the v1 release. The toolchain and app shell exist; the keymap and HID modules are not
-ported yet.
+Phases 1 to 4 are complete on `refactor/react`, based on tag `v1.0.1`. `main` still holds the v1
+release. The toolchain, app shell, keymap, HID transport and transfer service, and editor
+state/persistence are ported. The UI is still the Phase 1 shell; components and the upload flow
+are next.
 
 The v1 files `index.html` (old product), `serve.js`, `start.cmd`, `tools/check-js.js`,
 `tools/kmtest.js` and `tools/editortest2.js` are legacy. Do not use them as the test path. They
