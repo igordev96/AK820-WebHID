@@ -2,71 +2,82 @@
 
 This project is owned by igordev96. Be a collaborator, not an autopilot.
 
-The product is one file, `index.html`. It reprograms a physical keyboard, so a bad change can
-leave the keyboard typing the wrong thing. Read the safety rules before editing anything that
-reaches the device.
+The product is a Vite, React and TypeScript app in `src/`, deployed from `main` to Netlify. It
+reprograms a physical keyboard, so a bad change can leave the keyboard typing the wrong thing.
+Read the safety rules before editing anything that reaches the device.
+
+Vendor binaries, layout XML, artwork and the installer are not in this repository. The private
+research repository is the only place for them.
 
 ## Before you start
 
 Read these before touching the code:
 
 1. `README.md`: what the tool does and what it cannot do.
-2. `docs/04-code-map.md`: the editor, the transport and the test markers.
+2. `src/App.tsx` and the feature folders: how the UI is arranged.
 3. `docs/01-protocol.md`: the wire format.
 4. `docs/02-hardware-tests.md`: what was actually verified on the board.
 
-`docs/README.md` lists the full documentation order.
+`docs/README.md` lists the full documentation order. `docs/04-code-map.md` still describes the v1
+single-file page and is being rewritten for the React layout. Until that lands, treat it as
+history, not as a guide to `src/`.
 
-The vendor binaries, layout XML, artwork and installer are not in this repository and must not be
-added. The private research repository is the only place for them.
+## Stack
+
+Vite, React, TypeScript, Tailwind v4, shadcn/ui primitives, lucide-react and self-hosted IBM Plex
+through Fontsource. Netlify runs `npm run build` and publishes `dist/`. `dist/` is never committed.
+The page makes no analytics, telemetry or external asset requests.
 
 ## Ask before acting
 
 Stop and ask for approval before:
 
-- rewriting git history, moving tags, pushing or changing remotes;
-- changing `FACTORY_KEYS`, `FN_LOCKED`, `encodeRecord`, `buildTable`, `sendTable`, `waitReply`,
-  the 576-byte layout, the `AA 55` trailer or the begin/announce/commit order;
+- changing the protocol constants, `FACTORY_KEYS`, `FN_LOCKED`, the keymap encoding,
+  `buildTable`, `sendTable`, `waitReply` or the transfer sequence;
 - writing to a physical keyboard. Say which layer and slot will be written and how to undo it;
-- adding a dependency, a build step, a bundler, a framework or a second HTML/JS file;
-- publishing vendor material or adding anything from the private lab.
+- adding a dependency or replacing a core library;
+- changing `netlify.toml`, the build output or deployment settings;
+- rewriting git history, moving tags, pushing or changing remotes;
+- publishing vendor material.
 
 Read-only commands such as `git status`, `git log`, `git diff` and reading files need no approval.
 
 ## Checks
 
-Node.js 22.5+ is needed only for the local server and the checks. All three must pass before a
-commit:
+Node.js 22.12+ is required for development and the build. Node 24 is recommended.
 
 ```bat
-node tools/check-js.js index.html
-node tools/kmtest.js index.html
-node tools/editortest2.js index.html
+npm install
+npm run dev
+npm run verify
 ```
 
-The harnesses slice `index.html` by banner comments. Keep the markers described in `docs/04-code-map.md` §4,
-and update both harnesses if code moves across a marker.
+`npm run verify` runs typecheck, lint, format check, tests and the production build. All five must
+pass before a commit. Use `npm run format` to apply oxfmt.
 
-Run the page with `start.cmd` or `node serve.js`, then open <http://localhost:8765/>.
+Tests use Vitest and React Testing Library. HID tests use a fake device, so they run without a
+keyboard. The production build runs `tsc --noEmit` first, so a type error fails the build.
 
-## Invariants that break hardware
+## Architecture rules
 
-1. One transfer at a time. The page holds a busy lock; keep it.
-2. Abort on a refused begin or announce. Send `04 F0` and stage nothing.
-3. Poll for a stamped reply. Accept only `byte[1] == cmd && byte[3] != 0`; settle 220 ms, poll
-   60 ms.
-4. The table is always 576 bytes, records sit at `idx * 4`, `AA 55` is at 574-575 and `idx` stays
-   at or below 142.
-5. On the Fn layer, zero means firmware default. Never seed it with `FACTORY_KEYS`.
-   `fnlayer_disable` keys are read-only there.
-6. The record page is explicit. `media` selects record `0x03`; never infer it from the usage
-   number. `0xE2` is Left Alt and Mute, and `0xCD` is below `0xE7`. Raw text uses `c:0x...`.
-7. `applied` and `appliedMedia` move only on `commit 0x01`, and persistence happens only after
-   success.
-8. The mailbox is not behavioural evidence. Only typing on the board proves a remap. Record the
-   user's confirmation in `docs/02-hardware-tests.md`.
-
-The full list is in `docs/04-code-map.md` §3.
+- `src/lib/keymap` and `src/lib/hid` are framework-free. They do not import React.
+- React components render and dispatch. They do not call WebHID.
+- HID writes happen in event handlers or the transport service, never in `useEffect` or render.
+  StrictMode double-invokes effects in development, and a double upload is a hardware failure.
+- One transfer at a time. The busy lock lives in the transport service, not only in disabled
+  buttons.
+- The 576-byte table, `AA 55` at 574-575, `idx <= 142`, the begin/announce/commit order, the
+  220 ms settle and the 60 ms poll do not change.
+- On the Fn layer, zero means firmware default. Never seed it with factory keys.
+  `fnlayer_disable` keys are read-only there.
+- The record page is explicit. `media` selects record `0x03`; never infer it from the usage
+  number. `0xE2` is Left Alt and Mute, and `0xCD` is below `0xE7`. Raw text uses `c:0x...`.
+- `applied` and `appliedMedia` move only on `commit 0x01`, and persistence happens only after
+  success.
+- The mailbox is not behavioural evidence. Only typing on the board proves a remap. Record the
+  user's confirmation in `docs/02-hardware-tests.md`.
+- WebHID needs HTTPS or localhost. The deployed Netlify origin and the local dev origin are
+  separate permissions.
 
 ## Public text
 
@@ -88,12 +99,12 @@ Conventional Commits:
 Why the change was needed, what it does and what was verified on hardware.
 Keep paragraphs at 72 columns.
 
-Test: docs/02-hardware-tests.md Test N        (when behaviour was verified on the board)
+Test: docs/02-hardware-tests.md Test N    (when verified on the board)
 ```
 
 Types: `feat`, `fix`, `docs`, `test`, `refactor`, `chore`, `build`, `ci`, `style`, `perf`.
 
-Scopes: `app`, `editor`, `keymap`, `media`, `transport`, `docs`, `tools`, `repo`.
+Scopes: `app`, `editor`, `keymap`, `media`, `transport`, `styles`, `docs`, `tools`, `repo`.
 
 - one logical change per commit; code, tests and the docs it invalidates belong together;
 - no `wip`, `update`, `fix stuff` or pasted file lists;
@@ -109,11 +120,25 @@ Scopes: `app`, `editor`, `keymap`, `media`, `transport`, `docs`, `tools`, `repo`
 | `docs/01-protocol.md` | wire format; update when the bytes or commands change |
 | `docs/02-hardware-tests.md` | dated evidence, Test N; append, do not rewrite |
 | `docs/03-media-keys.md` | consumer records and the media result |
-| `docs/04-code-map.md` | structure, functions, state, harness markers |
-| `docs/05-setup.md` | local setup, checks, troubleshooting |
+| `docs/04-code-map.md` | module map and test layout; rewrite for `src/` |
+| `docs/05-setup.md` | install, dev server, checks, Netlify |
 | `docs/06-history.md` | milestones, lessons, open threads |
 
 Never claim "works" from a `0x01` commit. Keep `docs/02-hardware-tests.md` factual and dated.
+
+## Refactor state
+
+Phase 1 of the React refactor is in progress on `refactor/react`, based on tag `v1.0.1`. `main`
+still holds the v1 release. The toolchain and app shell exist; the keymap and HID modules are not
+ported yet.
+
+The v1 files `index.html` (old product), `serve.js`, `start.cmd`, `tools/check-js.js`,
+`tools/kmtest.js` and `tools/editortest2.js` are legacy. Do not use them as the test path. They
+will be removed in Phase 7. The npm scripts are the current checks. `README.md`,
+`docs/04-code-map.md` and `docs/05-setup.md` still describe the v1 app and are updated in Phase 7.
+
+Keep the protocol behaviour identical through the refactor. Do not mix feature work into this
+branch.
 
 ## Reporting
 

@@ -1,3 +1,17 @@
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+
+# Deployment tooling
+.netlify/
+.vercel/
+
+# Local files
+*.local
+.env
+.env.*
+
 # OS junk
 Thumbs.db
 desktop.ini
