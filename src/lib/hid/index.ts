@@ -25,3 +25,5 @@ export type {
   TransferResult,
   TransferStep,
 } from './transfer';
+export { buildWebHidFilters, getWebHid, pickDevice } from './webhid';
+export type { WebHid, WebHidCollection, WebHidDevice, WebHidFilter } from './webhid';
