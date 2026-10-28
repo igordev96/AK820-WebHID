@@ -1,0 +1,257 @@
+import type { Clock } from '@/lib/clock';
+import { realClock } from '@/lib/clock';
+import { hex } from '@/lib/format';
+import { TABLE_SIZE } from '@/lib/keymap';
+import type { HidTransport } from './client';
+import { CHUNK_COUNT, CHUNK_SIZE, COMMANDS, padFrame, STATUS, TIMING } from './protocol';
+
+export type HidLayer = 'top' | 'fn';
+
+export type LogLevel = 'info' | 'dim' | 'ok' | 'warn' | 'err';
+export type LogFn = (message: string, level?: LogLevel) => void;
+
+export type TransferReply = {
+  readonly status: number | null;
+  readonly raw: Uint8Array | null;
+  readonly ms: number;
+};
+
+export type TransferStep =
+  | { readonly step: 'begin'; readonly reply: TransferReply }
+  | { readonly step: 'announce'; readonly reply: TransferReply }
+  | { readonly step: 'chunks'; readonly reply: TransferReply }
+  | { readonly step: 'commit'; readonly reply: TransferReply }
+  | { readonly step: 'end'; readonly reply: TransferReply }
+  | { readonly step: 'aborted'; readonly reply: TransferReply };
+
+export type TransferResult = {
+  readonly steps: TransferStep[];
+  readonly busy?: boolean;
+};
+
+const errorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
+const noLog: LogFn = () => {};
+
+export class TransferService {
+  private busy = false;
+
+  constructor(
+    private readonly transport: HidTransport,
+    private readonly clock: Clock = realClock,
+    private readonly log: LogFn = noLog,
+  ) {}
+
+  get isBusy(): boolean {
+    return this.busy;
+  }
+
+  async sendTable(table: Uint8Array, layer: HidLayer): Promise<TransferResult> {
+    if (table.length !== TABLE_SIZE) {
+      throw new Error(`table must be ${TABLE_SIZE} bytes`);
+    }
+
+    if (this.busy) {
+      this.log('a transfer is already running — ignoring this request', 'warn');
+      return { steps: [], busy: true };
+    }
+
+    this.busy = true;
+    try {
+      return { steps: await this.run(table, layer) };
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  private async run(table: Uint8Array, layer: HidLayer): Promise<TransferStep[]> {
+    const steps: TransferStep[] = [];
+    const layerCommand = layer === 'fn' ? COMMANDS.fn : COMMANDS.top;
+    const layerByte = layerCommand[1];
+
+    await this.send(Uint8Array.from(COMMANDS.begin));
+    const begin = await this.waitReply(COMMANDS.begin[1], 'begin 04 18');
+    steps.push({ step: 'begin', reply: begin });
+
+    if (begin.status !== STATUS.ok) {
+      this.log(
+        `  ⇒ begin ${
+          begin.status === null ? 'got no reply' : `rejected (0x${hex([begin.status])})`
+        } — aborting before any data is staged`,
+        'err',
+      );
+      await this.abort();
+      steps.push({
+        step: 'aborted',
+        reply: { status: begin.status, raw: begin.raw, ms: 0 },
+      });
+      return steps;
+    }
+
+    const announce = padFrame(Uint8Array.from([0x04, layerByte]));
+    announce[8] = CHUNK_COUNT;
+    this.log(`SEND  ${hex(announce)}`, 'info');
+    await this.transport.send(announce);
+
+    const announced = await this.waitReply(layerByte, `announce 04 ${hex([layerByte])}`);
+    steps.push({ step: 'announce', reply: announced });
+
+    if (announced.status !== STATUS.ok) {
+      this.log(
+        `  ⇒ announce ${
+          announced.status === null ? 'got no reply' : `rejected (0x${hex([announced.status])})`
+        } — aborting before any chunk is staged`,
+        'err',
+      );
+      await this.abort();
+      steps.push({
+        step: 'aborted',
+        reply: { status: announced.status, raw: announced.raw, ms: 0 },
+      });
+      return steps;
+    }
+
+    await this.clock.sleep(TIMING.announcePause);
+
+    const chunksStart = this.clock.now();
+    for (let index = 0; index < CHUNK_COUNT; index += 1) {
+      const frame = table.subarray(index * CHUNK_SIZE, (index + 1) * CHUNK_SIZE);
+      let sent = false;
+
+      for (let attempt = 1; attempt <= TIMING.chunkAttempts; attempt += 1) {
+        const started = this.clock.now();
+        try {
+          await this.transport.send(frame);
+          const ms = Math.round(this.clock.now() - started);
+          this.log(
+            `  chunk ${index + 1}/${CHUNK_COUNT} ok in ${ms} ms${
+              attempt > 1 ? ` (attempt ${attempt})` : ''
+            }  ${hex(frame.subarray(0, 4))}`,
+            attempt > 1 ? 'ok' : 'dim',
+          );
+          sent = true;
+          break;
+        } catch (error) {
+          const ms = Math.round(this.clock.now() - started);
+          this.log(
+            `  chunk ${index + 1}/${CHUNK_COUNT} attempt ${attempt}/${TIMING.chunkAttempts} FAILED after ${ms} ms: ${errorMessage(
+              error,
+            )}  ${hex(frame.subarray(0, 4))}`,
+            'warn',
+          );
+          if (attempt < TIMING.chunkAttempts) await this.clock.sleep(TIMING.chunkRetry);
+        }
+      }
+
+      if (!sent) {
+        this.log(
+          `  ⇒ chunk ${index + 1} refused ${TIMING.chunkAttempts} times — aborting staging`,
+          'err',
+        );
+        await this.abort();
+        steps.push({
+          step: 'chunks',
+          reply: {
+            status: null,
+            raw: null,
+            ms: Math.round(this.clock.now() - chunksStart),
+          },
+        });
+        return steps;
+      }
+
+      if (index < CHUNK_COUNT - 1) await this.clock.sleep(TIMING.chunkGap);
+    }
+
+    this.log(
+      `SENT  ${CHUNK_COUNT} x ${CHUNK_SIZE}-byte chunks (${table.length} bytes) in ${Math.round(
+        this.clock.now() - chunksStart,
+      )} ms`,
+      'dim',
+    );
+
+    await this.send(Uint8Array.from(COMMANDS.commit));
+    const commit = await this.waitReply(COMMANDS.commit[1], 'commit 04 02');
+    steps.push({ step: 'commit', reply: commit });
+
+    await this.send(Uint8Array.from(COMMANDS.end));
+    const end = await this.waitReply(COMMANDS.end[1], 'end 04 F0');
+    steps.push({ step: 'end', reply: end });
+
+    return steps;
+  }
+
+  private async send(payload: Uint8Array): Promise<void> {
+    const frame = padFrame(payload);
+    this.log(`SEND  ${hex(frame)}`, 'info');
+    await this.transport.send(payload);
+    this.log(`      → sent (${payload.length} byte payload + 64-byte frame)`, 'dim');
+  }
+
+  private async abort(): Promise<void> {
+    try {
+      await this.send(Uint8Array.from(COMMANDS.end));
+    } catch {
+      // The transfer is already dead; the end command is best effort.
+    }
+  }
+
+  private async waitReply(
+    cmd: number,
+    label: string,
+    timeoutMs = TIMING.replyTimeout,
+    settleMs = TIMING.settle,
+  ): Promise<TransferReply> {
+    await this.clock.sleep(settleMs);
+    const started = this.clock.now();
+    let attempts = 0;
+    const seen: string[] = [];
+
+    while (this.clock.now() - started < timeoutMs) {
+      attempts += 1;
+      const result = await this.transport.read(TIMING.readTimeout);
+      const ms = Math.round(this.clock.now() - started);
+
+      if (result.ok && result.bytes.length >= 4) {
+        const frame = result.bytes;
+        const tag = `${hex(frame.subarray(0, 5))}@${ms}ms`;
+        if (!seen.includes(tag)) seen.push(tag);
+
+        if (frame[0] === 0x04 && frame[1] === cmd && frame[3] !== 0x00) {
+          const status = frame[3] as number;
+          const verdict =
+            status === STATUS.ok ? 'OK' : status === STATUS.rejected ? 'REJECTED' : '?';
+
+          this.log(
+            `  ${label}: status 0x${hex([status])} ${verdict}  (${ms} ms after settle, ${attempts} read${
+              attempts === 1 ? '' : 's'
+            })`,
+            status === STATUS.ok ? 'ok' : 'warn',
+          );
+          if (seen.length > 1) this.log(`    frames seen: ${seen.join('  |  ')}`, 'dim');
+          return { status, raw: frame, ms };
+        }
+      }
+
+      await this.clock.sleep(TIMING.poll);
+    }
+
+    this.log(
+      `  ${label}: no stamped reply within ${timeoutMs} ms — saw ${
+        seen.length ? seen.join('  |  ') : 'nothing'
+      }`,
+      'warn',
+    );
+    return { status: null, raw: null, ms: timeoutMs };
+  }
+}
+
+export function isTransportFailed(steps: readonly TransferStep[]): boolean {
+  return steps.some(
+    (step) =>
+      step.step === 'chunks' ||
+      step.step === 'aborted' ||
+      (step.step === 'begin' && step.reply.status !== STATUS.ok),
+  );
+}
