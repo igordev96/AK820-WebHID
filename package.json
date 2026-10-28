@@ -1,0 +1,11 @@
+{
+  "name": "ak820-webhid",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Unofficial WebHID key remapper for the AJAZZ AK820 Pro",
+  "license": "MIT",
+  "scripts": {
+    "start": "node serve.js",
+    "test": "node tools/check-js.js index.html && node tools/kmtest.js index.html && node tools/editortest2.js index.html"
+  }
+}

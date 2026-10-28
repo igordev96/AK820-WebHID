@@ -1,0 +1,1802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AK820 Pro — WebHID key remapper</title>
+<style>
+  :root {
+    --bg: #0b0d12;
+    --panel: #141821;
+    --panel-2: #1b2030;
+    --line: #2a3145;
+    --text: #e6e9f2;
+    --muted: #8b94ab;
+    --accent: #6c8cff;
+    --ok: #3ddc97;
+    --warn: #ffb454;
+    --err: #ff6b6b;
+    --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(1200px 600px at 50% -200px, #1a2140 0%, var(--bg) 60%);
+    color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 32px 20px 80px; }
+  header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: .2px; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 22px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--err); box-shadow: 0 0 10px currentColor; }
+  .dot.on { background: var(--ok); color: var(--ok); }
+  .dot.idle { background: #4a5268; box-shadow: none; }
+  .card {
+    background: linear-gradient(180deg, var(--panel-2), var(--panel));
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin: 0 0 14px; font-weight: 600; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  button {
+    font: inherit; font-weight: 600; font-size: 14px;
+    padding: 10px 18px; border-radius: 9px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--panel-2); color: var(--text);
+    transition: .15s;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-1px); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  button.primary { background: linear-gradient(180deg, #6c8cff, #4a6ae0); border-color: #4a6ae0; color: #fff; }
+  button.ghost { background: transparent; }
+  input[type=text] {
+    font-family: var(--mono); font-size: 14px;
+    background: #0d1018; color: var(--text);
+    border: 1px solid var(--line); border-radius: 9px;
+    padding: 10px 12px; flex: 1; min-width: 240px;
+  }
+  input[type=text]:focus { outline: none; border-color: var(--accent); }
+  .hint { color: var(--muted); font-size: 12.5px; margin-top: 10px; }
+  .kv { display: grid; grid-template-columns: 150px 1fr; gap: 6px 14px; font-size: 13.5px; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; font-family: var(--mono); word-break: break-all; }
+  #log {
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.65;
+    background: #0a0c11; border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px; height: 340px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
+  }
+  #log .t { color: #4e5773; }
+  #log .ok { color: var(--ok); }
+  #log .warn { color: var(--warn); }
+  #log .err { color: var(--err); }
+  #log .info { color: var(--accent); }
+  #log .dim { color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12.5px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; }
+  td.yes { color: var(--ok); }
+  td.no { color: #5d6478; }
+  .verdict { border-radius: 10px; padding: 14px 16px; font-size: 14px; border: 1px solid var(--line); background: #0d1018; }
+  .verdict.ok { border-color: #2a6a4f; background: #0e221a; }
+  .verdict.warn { border-color: #6a562a; background: #221c0e; }
+  .verdict.err { border-color: #6a2a2a; background: #220e0e; }
+  code { font-family: var(--mono); background: #0d1018; padding: 1px 6px; border-radius: 5px; font-size: 12.5px; border: 1px solid var(--line); }
+  .banner {
+    border: 1px solid #6a2a2a; background: #1e0f0f; color: #ffb3b3;
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; font-size: 13.5px;
+  }
+  .banner.blue { border-color: #2a3f6a; background: #0e1522; color: #b9c6e8; }
+  a { color: var(--accent); }
+
+  /* ---------- keymap editor ---------- */
+  .km-editor { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 14px; }
+  .km-board {
+    position: relative; width: 624px; height: 250px; flex: 0 0 auto; padding: 6px;
+    background: #0d1018; border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+  }
+  .km-key {
+    position: absolute; padding: 0; border-radius: 6px; font-size: 9.5px; font-weight: 600;
+    background: #1b2030; border: 1px solid #333c55; color: var(--text);
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    overflow: hidden; cursor: pointer; transition: none; line-height: 1.1;
+    white-space: nowrap;
+  }
+  .km-key:hover:not(:disabled) { border-color: var(--accent); background: #232a3f; transform: none; }
+  .km-key.changed { background: #2a2210; border-color: #6a562a; color: #ffd79a; }
+  .km-key.sel { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(108,140,255,.45) inset; }
+  .km-key.fnlock, .km-key.fnlock:hover { background: #12151d; border-color: #232838; color: #4b5468; cursor: not-allowed; }
+  .km-layer { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .km-tab {
+    padding: 6px 13px; border-radius: 8px; font-size: 12.5px; font-weight: 600;
+    background: #151a26; border: 1px solid var(--line); color: var(--muted); cursor: pointer;
+  }
+  .km-tab.on { background: #232a3f; border-color: var(--accent); color: var(--text); }
+  .km-layernote { font-size: 12px; color: var(--muted); }
+  .km-side { flex: 1 1 260px; min-width: 240px; }
+  .km-side select, .km-side input[type=text] {
+    width: 100%; min-width: 0; font-family: var(--mono); font-size: 13px; background: #0d1018; color: var(--text);
+    border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; margin-top: 6px;
+  }
+  .km-side label { display: block; font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-top: 14px; }
+  .km-dirty { font-family: var(--mono); font-size: 12px; color: var(--warn); margin-top: 10px; white-space: pre-wrap; }
+  .km-title { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
+  .km-sub { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+  details.km-adv { margin-top: 14px; }
+  details.km-adv summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="dot idle" id="dot"></span>
+    <h1>AJAZZ AK820 Pro — WebHID key remapper</h1>
+  </header>
+  <p class="sub">
+    Remap the top and Fn layers, and assign media keys, from the browser.
+    No install, no admin rights — just WebHID
+    (<code>Usage Page 0xFF13</code>, VID <code>0x0C45</code>).
+  </p>
+
+  <div class="banner blue">
+    <strong>Before you click:</strong> close the AJAZZ desktop app — only one program can hold the config interface.
+    Use Chrome, Edge or Opera on desktop (WebHID is unavailable in Firefox, Safari and on mobile).
+    <br>
+    <strong>Unofficial community tool.</strong> Not affiliated with AJAZZ. It writes the key table to your
+    keyboard; use it at your own risk and keep the vendor app as the recovery path.
+  </div>
+
+  <div class="card">
+    <h2>1 · Device</h2>
+    <div class="row">
+      <button class="primary" id="btnConnect">Connect keyboard</button>
+      <button class="ghost" id="btnDisconnect" disabled>Disconnect</button>
+      <button class="ghost" id="btnDiagnose" disabled>Run diagnostics</button>
+    </div>
+    <div id="devInfo" style="margin-top:16px"></div>
+  </div>
+
+  <div class="card">
+    <h2>2 · Diagnostics verdict</h2>
+    <div class="verdict" id="verdict">Not run yet.</div>
+  </div>
+
+  <div class="card">
+    <h2>3 · Deep probe — is the reply real?</h2>
+    <div class="row">
+      <button class="primary" id="btnDeep" disabled>Run deep probe</button>
+      <button id="btnMailbox" disabled>Run mailbox test</button>
+    </div>
+    <p class="hint">
+      Runs four experiments back to back: baseline stability, an echo test with a distinctive payload,
+      command isolation, and a 32-read stream test. Together they tell us whether the 64-byte reply is
+      generated by the device or is just our own buffer handed back.
+    </p>
+    <div id="deepOut" style="margin-top:14px"></div>
+  </div>
+
+  <div class="card">
+    <h2>4 · Raw command</h2>
+    <div class="row">
+      <input type="text" id="rawHex" value="04 18" spellcheck="false" placeholder="e.g. 04 18">
+      <button id="btnSend" disabled>Send</button>
+      <button class="ghost" id="btnProbe" disabled>Send + listen</button>
+    </div>
+    <p class="hint">
+      Bytes here are the <em>application payload</em>; the browser adds the leading <code>00</code> report ID.
+      So <code>04 18</code> goes on the wire as <code>00 04 18 00 …</code>. Up to 64 bytes is sent as one frame; longer payloads are split into bare 64-byte chunks, exactly like the vendor app (its 576-byte keymap is 9 chunks after a <code>04 11 … 09</code> announce).
+      <br>Presets: <code>04 18</code> init handshake · <code>04 19</code> generic read · <code>04 F5</code> firmware version · <code>04 02</code> commit · <code>04 F0</code> end
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>6 · Key editor</h2>
+    <p class="hint">
+      Click a key, then choose what it should send. Edits stay in the page until you press
+      <strong>Upload changes</strong> — the firmware has no single-key command, so the whole 576-byte layer is
+      re-sent each time. <strong>Restore factory map</strong> puts every key back in one click.
+      The <strong>Fn layer</strong> tab edits what each key does while Fn is held; it is a separate table,
+      and there the keyboard's own default is spelled <em>a zero slot</em>, so only the keys you change are written.
+      The keyboard cannot report either layer back, so this browser remembers the Fn overrides it wrote.
+    </p>
+    <div class="km-layer">
+      <button type="button" class="km-tab on" id="btnLayerTop" aria-pressed="true">Top layer</button>
+      <button type="button" class="km-tab" id="btnLayerFn" aria-pressed="false">Fn layer</button>
+      <span class="km-layernote" id="kmLayerNote"></span>
+    </div>
+    <div class="km-editor">
+      <div class="km-board" id="kmBoard"></div>
+      <div class="km-side">
+        <div class="km-title" id="kmSelName">No key selected</div>
+        <div class="km-sub" id="kmSelMeta">click a key on the left</div>
+        <label for="kmUsage">Sends</label>
+        <select id="kmUsage" disabled></select>
+        <label for="kmRaw">Or raw usage (hex; c: = media)</label>
+        <input type="text" id="kmRaw" spellcheck="false" placeholder="e.g. 0x29 or c:0xE2" disabled>
+        <div class="km-dirty" id="kmDirty"></div>
+        <div class="row" style="margin-top:12px">
+          <button class="ghost" id="btnKmResetKey" disabled>Reset this key</button>
+        </div>
+        <p class="hint" style="font-size:11.5px">
+          Keyboard usages are <code>0x00–0xE7</code> plus the vendor Fn at <code>0xAF</code> (0xE2 is Left Alt).
+          Media/consumer functions are in the <strong>Media</strong> group and are written with record type
+          <code>0x03</code>; in the raw box they need a <code>c:</code> prefix — e.g. <code>c:0xE2</code> Mute —
+          because 0xE2 alone is Left Alt.
+        </p>
+      </div>
+    </div>
+    <div class="row" style="margin-top:16px">
+      <button class="primary" id="btnKmUpload" disabled>Upload changes</button>
+      <button class="ghost" id="btnKmRestore" disabled>Restore factory map</button>
+      <button id="btnKmProbe" disabled>Validation probe</button>
+      <button id="btnKmRemapTest" disabled>Remap test: CapsLock → x</button>
+    </div>
+    <div id="kmOut" style="margin-top:12px"></div>
+    <details class="km-adv">
+      <summary>Advanced — raw map text, packet preview</summary>
+      <p class="hint">
+        One line per key: <code>key_index usage name</code>. Keyboard records are encoded as
+        <code>02 &lt;modifier&gt; &lt;usage&gt; 00</code> (modifiers become <code>02 &lt;bit&gt; 00 00</code>);
+        media records are <code>03 &lt;lo&gt; &lt;hi&gt; 00</code> and their usage carries a <code>c:</code> prefix
+        (<code>c:0xE2</code> Mute, <code>c:0x0224</code> Browser back). Everything is written at offset
+        <code>key_index × 4</code>; every other slot stays zero; bytes 574–575 carry the
+        <code>AA 55</code> trailer. The text mirrors the editor state — edit it, then <em>Load from text</em>.
+        On the Fn layer a usage of <code>0x00</code> means <em>no override</em>: nothing is written to that slot.
+      </p>
+      <p class="hint">
+        The device mailbox keeps the <em>previous</em> reply until it has processed the new command, so a read issued
+        immediately after a write returns stale data. Every reply echoes its command in byte&nbsp;1, so the driver
+        polls until the reply belongs to the command it just sent — the step tables show the status and round-trip
+        time for each frame.
+      </p>
+      <textarea id="kmMap" spellcheck="false" style="width:100%;height:150px;background:#0d1018;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-family:var(--mono);font-size:12.5px;resize:vertical"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button id="btnKmLoad" disabled>Load from text</button>
+        <button id="btnKmPreview" disabled>Preview packet</button>
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>5 · Log</h2>
+    <div class="row" style="margin-bottom:12px">
+      <button class="ghost" id="btnCopy">Copy report</button>
+      <button class="ghost" id="btnClear">Clear</button>
+    </div>
+    <div id="log"></div>
+  </div>
+
+  <p class="hint" style="text-align:center;margin-top:24px">
+    Unofficial community project · MIT licensed · v1.0.0
+  </p>
+
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const VENDOR_ID   = 0x0C45;
+  const PRODUCT_IDS = [0x8009, 0x800A, 0xFDFD];
+  const CFG_PAGE    = 0xFF13;
+  const CFG_USAGE   = 0x0001;
+
+  const $ = (id) => document.getElementById(id);
+  const logEl = $('log');
+  const dot = $('dot');
+
+  let device = null;
+  let inputReports = [];       // captured inputreport payloads
+  let inputListener = null;
+
+  /* ---------- logging ---------- */
+
+  function ts() {
+    const d = new Date();
+    return d.toTimeString().slice(0, 8) + '.' + String(d.getMilliseconds()).padStart(3, '0');
+  }
+
+  function log(msg, cls = '') {
+    const html = `<span class="t">${ts()}</span>  <span class="${cls}">${escapeHtml(msg)}</span>`;
+    logEl.insertAdjacentHTML('beforeend', html + '\n');
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function hex(bytes) {
+    return Array.from(bytes, b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+  }
+
+  function parseHex(str) {
+    const clean = str.replace(/0x/gi, '').replace(/[^0-9a-fA-F]/g, '');
+    if (clean.length === 0) return null;
+    if (clean.length % 2) throw new Error('odd number of hex digits');
+    const out = new Uint8Array(clean.length / 2);
+    for (let i = 0; i < out.length; i++) out[i] = parseInt(clean.substr(i * 2, 2), 16);
+    return out;
+  }
+
+  /* ---------- collection helper ---------- */
+
+  function flatten(cols, depth = 0, out = []) {
+    for (const c of cols) {
+      out.push({ col: c, depth });
+      if (c.children && c.children.length) flatten(c.children, depth + 1, out);
+    }
+    return out;
+  }
+
+  function findConfigCollection(dev) {
+    const all = flatten(dev.collections).map(x => x.col);
+    return all.find(c => c.usagePage === CFG_PAGE && c.usage === CFG_USAGE) || null;
+  }
+
+  /* ---------- device rendering ---------- */
+
+  function renderDevice() {
+    if (!device) { $('devInfo').innerHTML = ''; return; }
+
+    const cfg = findConfigCollection(device);
+    const rows = flatten(device.collections).map(({ col, depth }) => {
+      const isCfg = col.usagePage === CFG_PAGE && col.usage === CFG_USAGE;
+      return `<tr>
+        <td style="padding-left:${8 + depth * 14}px">${isCfg ? '▸ ' : ''}0x${col.usagePage.toString(16).toUpperCase().padStart(4, '0')}</td>
+        <td>0x${col.usage.toString(16).toUpperCase().padStart(4, '0')}</td>
+        <td class="${col.inputReports && col.inputReports.length ? 'yes' : 'no'}">${col.inputReports ? col.inputReports.length : 0}</td>
+        <td class="${col.outputReports && col.outputReports.length ? 'yes' : 'no'}">${col.outputReports ? col.outputReports.length : 0}</td>
+        <td class="${col.featureReports && col.featureReports.length ? 'yes' : 'no'}">${col.featureReports ? col.featureReports.length : 0}</td>
+      </tr>`;
+    }).join('');
+
+    $('devInfo').innerHTML = `
+      <dl class="kv">
+        <dt>Device</dt><dd>${escapeHtml(device.productName || '(no name)')}</dd>
+        <dt>VID / PID</dt><dd>0x${device.vendorId.toString(16).toUpperCase().padStart(4,'0')} / 0x${device.productId.toString(16).toUpperCase().padStart(4,'0')}</dd>
+        <dt>Opened</dt><dd>${device.opened ? '<span style="color:var(--ok)">yes</span>' : '<span style="color:var(--err)">no</span>'}</dd>
+        <dt>Config interface</dt><dd>${cfg ? '<span style="color:var(--ok)">found (0xFF13 / 0x0001)</span>' : '<span style="color:var(--err)">not found</span>'}</dd>
+      </dl>
+      <div style="margin-top:16px;overflow-x:auto">
+        <table>
+          <thead><tr><th>Usage page</th><th>Usage</th><th>In</th><th>Out</th><th>Feat</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <p class="hint">Only the <code>0xFF13</code> collection is usable for config. Chrome blocks keyboard/consumer collections for WebHID — that is expected and does not matter.</p>
+    `;
+  }
+
+  /* ---------- sending ---------- */
+
+  // Single feature-report frame: 64 payload bytes, report ID added by the browser.
+  async function send(payload) {
+    if (!device || !device.opened) throw new Error('device not open');
+    let bytes = payload;
+    if (bytes.length > 64) bytes = bytes.slice(0, 64);
+    const frame = new Uint8Array(64);
+    frame.set(bytes, 0);
+    log(`SEND  ${hex(frame)}`, 'info');
+    await device.sendFeatureReport(0, frame);
+    log(`      → sent (${bytes.length} byte payload + 64-byte frame)`, 'dim');
+  }
+
+  // Mirrors Device::Write: payload <= 64 -> one frame; larger -> floor(len/64)
+  // bare 64-byte chunks with no per-chunk header (the command header was sent before).
+  async function sendChunked(payload) {
+    if (payload.length <= 64) return send(payload);
+    const chunks = payload.length >> 6;
+    log(`SEND  chunked: ${payload.length} bytes → ${chunks} × 64-byte reports`, 'info');
+    for (let i = 0; i < chunks; i++) {
+      const frame = new Uint8Array(64);
+      frame.set(payload.subarray(i * 64, (i + 1) * 64), 0);
+      log(`  [${i + 1}/${chunks}] ${hex(frame)}`, 'dim');
+      await device.sendFeatureReport(0, frame);
+    }
+  }
+
+  /* ---------- reading ---------- */
+
+  function startInputCapture() {
+    inputReports = [];
+    inputListener = (ev) => {
+      const data = new Uint8Array(ev.data.buffer, ev.data.byteOffset, ev.data.byteLength);
+      inputReports.push({ reportId: ev.reportId, data });
+      log(`INPUT reportId=${ev.reportId}  ${hex(data)}`, 'ok');
+    };
+    device.addEventListener('inputreport', inputListener);
+  }
+
+  function stopInputCapture() {
+    if (inputListener && device) device.removeEventListener('inputreport', inputListener);
+    inputListener = null;
+  }
+
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+  async function tryFeatureRead(timeoutMs = 900) {
+    let timedOut = false;
+    const t = setTimeout(() => { timedOut = true; }, timeoutMs);
+    try {
+      const result = await Promise.race([
+        device.receiveFeatureReport(0),
+        sleep(timeoutMs).then(() => Symbol.for('timeout'))
+      ]);
+      if (result === Symbol.for('timeout')) return { ok: false, reason: 'timeout' };
+      const dv = result;
+      const bytes = new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength);
+      return { ok: true, bytes, timedOut };
+    } catch (e) {
+      return { ok: false, reason: e.message || String(e) };
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  /* ---------- connect ---------- */
+
+  async function connect() {
+    if (!('hid' in navigator)) {
+      $('verdict').className = 'verdict err';
+      $('verdict').textContent = 'This browser has no WebHID. Use Chrome, Edge or Opera on desktop.';
+      log('navigator.hid missing — WebHID unavailable', 'err');
+      return;
+    }
+    if (!window.isSecureContext) {
+      $('verdict').className = 'verdict err';
+      $('verdict').textContent = 'Not a secure context — serve this page over HTTPS or from localhost.';
+      log('not a secure context', 'err');
+      return;
+    }
+
+    log('requesting device…', 'dim');
+
+    const filters = [];
+    for (const pid of PRODUCT_IDS) filters.push({ vendorId: VENDOR_ID, productId: pid, usagePage: CFG_PAGE, usage: CFG_USAGE });
+    for (const pid of PRODUCT_IDS) filters.push({ vendorId: VENDOR_ID, productId: pid });
+
+    let devices;
+    try {
+      devices = await navigator.hid.requestDevice({ filters });
+    } catch (e) {
+      log('requestDevice failed: ' + e.message, 'err');
+      return;
+    }
+    if (!devices || devices.length === 0) {
+      log('no device selected', 'warn');
+      return;
+    }
+
+    device = devices.find(d => findConfigCollection(d)) || devices[0];
+    log(`selected: ${device.productName} ${device.vendorId.toString(16)}:${device.productId.toString(16)}`, 'ok');
+
+    try {
+      await device.open();
+      log('device.open() OK', 'ok');
+    } catch (e) {
+      log('device.open() failed: ' + e.message, 'err');
+      return;
+    }
+
+    device.addEventListener('inputreport', () => {});   // required for inputreport to fire
+    device.addEventListener('disconnect', () => {
+      log('device disconnected', 'warn');
+      setConnected(false);
+    });
+
+    setConnected(true);
+    renderDevice();
+
+    if (!findConfigCollection(device)) {
+      log('config interface 0xFF13/0x0001 not present on this device — wrong mode?', 'err');
+    }
+  }
+
+  function setConnected(on) {
+    dot.className = 'dot ' + (on ? 'on' : 'idle');
+    $('btnConnect').disabled = on;
+    $('btnDisconnect').disabled = !on;
+    $('btnDiagnose').disabled = !on;
+    $('btnSend').disabled = !on;
+    $('btnProbe').disabled = !on;
+    $('btnDeep').disabled = !on;
+    $('btnMailbox').disabled = !on;
+    $('btnKmPreview').disabled = !on;
+    $('btnKmProbe').disabled = !on;
+    $('btnKmRemapTest').disabled = !on;
+    $('btnKmUpload').disabled = !on;
+    $('btnKmRestore').disabled = !on;
+    $('btnKmLoad').disabled = !on;
+    if (!on) { device = null; inputReports = []; renderDevice(); }
+  }
+
+  async function disconnect() {
+    if (!device) return;
+    try { await device.close(); log('closed', 'dim'); } catch (e) { log('close error: ' + e.message, 'warn'); }
+    setConnected(false);
+  }
+
+  /* ---------- diagnostics ---------- */
+
+  async function diagnose() {
+    const results = [];
+    const push = (name, status, detail) => {
+      results.push({ name, status, detail });
+      const cls = status === 'ok' ? 'ok' : status === 'warn' ? 'warn' : 'err';
+      const mark = status === 'ok' ? 'PASS' : status === 'warn' ? 'WARN' : 'FAIL';
+      log(`[${mark}] ${name}${detail ? ' — ' + detail : ''}`, cls);
+    };
+
+    log('──── diagnostics start ────', 'dim');
+
+    push('secure context', window.isSecureContext ? 'ok' : 'err', window.isSecureContext ? 'yes' : 'page must be https/localhost');
+    push('navigator.hid', ('hid' in navigator) ? 'ok' : 'err', ('hid' in navigator) ? 'available' : 'missing');
+
+    const cfg = device ? findConfigCollection(device) : null;
+    push('config interface 0xFF13/0x0001', cfg ? 'ok' : 'err', cfg ? 'found' : 'not found');
+
+    let featIn = 0, featOut = 0;
+    if (cfg) {
+      featIn = cfg.featureReports?.[0]?.reportId !== undefined ? cfg.featureReports[0].reportId : 0;
+      featOut = cfg.outputReports?.[0]?.reportId !== undefined ? cfg.outputReports[0].reportId : 0;
+      push('feature reports', (cfg.featureReports && cfg.featureReports.length) ? 'ok' : 'err',
+           cfg.featureReports ? cfg.featureReports.map(r => `${r.reportId}:${r.items.length}`).join(', ') : 'none');
+      push('output reports', (cfg.outputReports && cfg.outputReports.length) ? 'ok' : 'warn',
+           cfg.outputReports ? cfg.outputReports.map(r => `${r.reportId}:${r.items.length}`).join(', ') : 'none');
+    }
+
+    // ---- write test: the init handshake every vendor command uses ----
+    let writable = false;
+    try {
+      await send(new Uint8Array([0x04, 0x18]));
+      writable = true;
+      push('feature write (04 18 init)', 'ok', 'sendFeatureReport resolved');
+    } catch (e) {
+      push('feature write (04 18 init)', 'err', e.message);
+    }
+
+    // ---- read probe ----
+    let readResult = null;
+    let asyncResult = null;
+
+    if (writable) {
+      const probes = [
+        { name: '04 19 (generic read)', bytes: [0x04, 0x19] },
+        { name: '04 F5 (firmware ver)', bytes: [0x04, 0xF5] },
+      ];
+
+      for (const p of probes) {
+        log(`probe ${p.name}`, 'dim');
+        startInputCapture();
+        try { await send(new Uint8Array(p.bytes)); } catch (e) { log('send failed: ' + e.message, 'err'); }
+        await sleep(700);
+        const feat = await tryFeatureRead(900);
+        await sleep(400);
+        stopInputCapture();
+
+        if (asyncResult === null && inputReports.length) asyncResult = { probe: p.name, count: inputReports.length };
+        if (readResult === null && feat.ok) readResult = { probe: p.name, bytes: feat.bytes };
+
+        if (feat.ok) {
+          log(`  feature read returned ${feat.bytes.length} bytes: ${hex(feat.bytes)}`, 'ok');
+        } else {
+          log(`  feature read: ${feat.reason}`, 'dim');
+        }
+        if (!inputReports.length) log('  no input report', 'dim');
+      }
+    }
+
+    // ---- summary ----
+    results.push({ sep: true });
+    if (readResult) {
+      push('feature read-back', 'ok', `${readResult.probe} → ${readResult.bytes.length} bytes`);
+    } else {
+      push('feature read-back', 'warn', 'no response (device appears write-only)');
+    }
+    if (asyncResult) {
+      push('async input reports', 'ok', `${asyncResult.count} report(s) after ${asyncResult.probe}`);
+    } else {
+      push('async input reports', 'warn', 'none observed');
+    }
+
+    const verdict = $('verdict');
+    if (!writable) {
+      verdict.className = 'verdict err';
+      verdict.textContent = 'WebHID could not drive this keyboard. Check that the AJAZZ desktop app is closed and try another cable/port.';
+    } else if (readResult || asyncResult) {
+      verdict.className = 'verdict ok';
+      verdict.textContent = 'Transport works: commands are written and the mailbox answers with a per-command status byte. There is no configuration read-back (the reply only echoes the command), so the driver keeps its own copy — same as the vendor app.';
+    } else {
+      verdict.className = 'verdict warn';
+      verdict.textContent = 'Write-only, exactly like the desktop app: commands are accepted but the keyboard never replies. A web driver is still fully feasible — it just keeps its own copy of the configuration instead of reading it back (same as the vendor software does).';
+    }
+
+    log('──── diagnostics done ────', 'dim');
+    return results;
+  }
+
+  /* ---------- deep probe ---------- */
+
+  async function frame(hexBytes, label) {
+    await send(new Uint8Array(hexBytes));
+    await sleep(220);
+    const r = await tryFeatureRead(800);
+    if (!r.ok) { log(`  ${label}: no reply (${r.reason})`, 'warn'); return null; }
+    log(`  ${label}: ${hex(r.bytes)}`, 'ok');
+    return r.bytes;
+  }
+
+  function sameBytes(a, b, from = 0, to = 64) {
+    for (let i = from; i < to; i++) if (a[i] !== b[i]) return false;
+    return true;
+  }
+
+  async function deepProbe() {
+    const out = [];
+    const note = (s) => { out.push(s); log(s, 'dim'); };
+
+    log('════ deep probe start ════', 'info');
+
+    /* --- 1. baseline: read without writing anything --- */
+    log('1 · baseline (no write, 6 reads)', 'info');
+    const baseline = [];
+    for (let i = 0; i < 6; i++) {
+      const r = await tryFeatureRead(800);
+      baseline.push(r.ok ? r.bytes : null);
+      await sleep(150);
+    }
+    const baseUnique = new Set(baseline.filter(Boolean).map(hex));
+    note(`  distinct frames: ${baseUnique.size}${baseUnique.size === 1 ? ' → stable' : ' → CHANGES between reads'}`);
+    if (baseUnique.size) note(`  sample: ${[...baseUnique][0]}`);
+
+    /* --- 2. echo test: distinctive payload --- */
+    log('2 · echo test', 'info');
+    const marker = [0x04, 0x19, 0xDE, 0xAD, 0xBE, 0xEF, 0x11, 0x22, 0x33, 0x44];
+    const echo = await frame(marker, 'after 04 19 DE AD BE EF 11 22 33 44');
+    let echoVerdict = 'no reply';
+    if (echo) {
+      if (sameBytes(echo, marker, 2, 10)) echoVerdict = 'ECHO — the payload came back untouched';
+      else if (echo[1] === 0x19) echoVerdict = 'device-generated (cmd mirrored, payload replaced)';
+      else echoVerdict = 'device-generated (cmd not mirrored)';
+    }
+    note(`  → ${echoVerdict}`);
+    if (echo) note(`  bytes 2..9 sent ${hex(marker.slice(2))} / got ${hex(echo.slice(2, 10))}`);
+
+    /* --- 3. command isolation: same read after a different command --- */
+    log('3 · command isolation', 'info');
+    const iso = await frame([0x04, 0x18], 'after 04 18');
+    const iso2 = await frame([0x04, 0x02], 'after 04 02');
+    let isoVerdict = 'unknown';
+    if (iso && echo) {
+      if (iso[1] === 0x18) isoVerdict = 'byte[1] follows the last command → per-command reply';
+      else if (sameBytes(iso, echo, 0, 64)) isoVerdict = 'byte[1] unchanged → stale buffer from the previous command';
+      else isoVerdict = 'differs in other bytes → inspect log';
+    }
+    note(`  → ${isoVerdict}`);
+    if (iso2) note(`  04 02 reply byte[1] = 0x${iso2[1].toString(16).toUpperCase()}`);
+
+    /* --- 4. stream test: 32 consecutive reads --- */
+    log('4 · stream test (04 19 then 32 reads)', 'info');
+    await send(new Uint8Array([0x04, 0x19]));
+    const stream = [];
+    for (let i = 0; i < 32; i++) {
+      const r = await tryFeatureRead(600);
+      stream.push(r.ok ? r.bytes : null);
+      await sleep(90);
+    }
+    const okStream = stream.filter(Boolean);
+    const uniq = [];
+    for (const f of okStream) { const h = hex(f); if (!uniq.find(u => u.h === h)) uniq.push({ h, f }); }
+    note(`  replies: ${okStream.length}/32, distinct frames: ${uniq.length}`);
+    uniq.slice(0, 8).forEach((u, i) => note(`    #${i + 1} ${u.h}`));
+    if (uniq.length > 8) note(`    … ${uniq.length - 8} more`);
+    const bytesVary = new Set(okStream.map(f => f[3])).size;
+    note(`  byte[3] values seen: ${[...new Set(okStream.map(f => f[3]))].map(b => '0x' + b.toString(16).toUpperCase()).join(', ')} (${bytesVary} distinct)`);
+
+    /* --- summary --- */
+    let verdict, cls;
+    if (echoVerdict.startsWith('ECHO')) {
+      verdict = 'Write-through buffer only: what we read back is our own last frame. No real read channel — the web driver must keep its own configuration copy, like the vendor app does.';
+      cls = 'warn';
+    } else if (echoVerdict.startsWith('device-generated') && uniq.length > 1) {
+      verdict = 'The reply mirrors the command and stamps a result byte at index 3; the rest is our own payload echoed back. There is no state read-back — but the mailbox is a reliable acknowledgement channel, which is what the keymap upload gates on.';
+      cls = 'warn';
+    } else if (echoVerdict.startsWith('device-generated')) {
+      verdict = 'The device answers, but with one constant frame (an acknowledgement). Reads confirm delivery but carry no data — the web driver keeps its own configuration copy.';
+      cls = 'warn';
+    } else {
+      verdict = 'No usable reply. Treat the device as write-only, like the desktop app does.';
+      cls = 'warn';
+    }
+
+    note(`VERDICT: ${verdict}`);
+
+    $('deepOut').innerHTML = `
+      <div class="verdict ${cls}" style="white-space:pre-wrap">${escapeHtml(out.join('\n').replace(/^ {2}/gm, ''))}</div>
+    `;
+    log('════ deep probe done ════', 'info');
+  }
+
+  /* ---------- mailbox test ---------- */
+
+  async function mailboxProbe() {
+    const rows = [];
+
+    const run = async (label, payload) => {
+      try {
+        await send(new Uint8Array(payload));
+      } catch (e) {
+        rows.push({ label, sent: payload, reply: 'send error: ' + e.message });
+        log(`${label}: send error ${e.message}`, 'err');
+        return null;
+      }
+      await sleep(200);
+      const r = await tryFeatureRead(800);
+      if (!r.ok) { rows.push({ label, sent: payload, reply: 'no reply (' + r.reason + ')' }); return null; }
+      rows.push({ label, sent: payload, reply: r.bytes });
+      log(`${label}\n   sent  ${hex(new Uint8Array(payload))}\n   reply ${hex(r.bytes)}`, 'info');
+      return r.bytes;
+    };
+
+    const sameExcept = (a, b, skip) => {
+      for (let i = 0; i < 64; i++) { if (i === skip) continue; if (a[i] !== b[i]) return false; }
+      return true;
+    };
+
+    log('════ mailbox test start ════', 'info');
+
+    /* A. does the device validate opcodes at all? */
+    const unknown = [
+      ['unknown opcode 0xEE', [0x04, 0xEE]],
+      ['unknown opcode 0x7F', [0x04, 0x7F]],
+      ['unknown opcode 0xBE', [0x04, 0xBE]],
+    ];
+    const unknownReplies = [];
+    for (const [label, p] of unknown) unknownReplies.push(await run(label, p));
+
+    /* B. is byte[3] overwritten by a status, or is it ours coming back? */
+    const b1 = await run('write byte[3] = 0xDE', [0x04, 0x19, 0x00, 0xDE]);
+    const b2 = await run('write byte[3] = 0x07', [0x04, 0x19, 0x00, 0x07]);
+
+    /* C. can we influence the reported length? */
+    await run('byte[2] = 0x40', [0x04, 0x19, 0x00, 0x00, 0x40]);
+    await run('byte[2] = 0x01', [0x04, 0x19, 0x01]);
+    await run('trailing 0x40', [0x04, 0x19, 0x00, 0x00, 0x00, 0x40]);
+
+    /* D. commit semantics: alone vs after a staged command */
+    const commitAlone = await run('commit alone', [0x04, 0x02]);
+    await run('init', [0x04, 0x18]);
+    const commitAfterInit = await run('commit after init', [0x04, 0x02]);
+
+    /* E. is the reply consumed by the first read? */
+    await send(new Uint8Array([0x04, 0x19]));
+    await sleep(200);
+    const c1 = await tryFeatureRead(800);
+    const c2 = await tryFeatureRead(800);
+    const consumed = c1.ok && c2.ok && hex(c1.bytes) !== hex(c2.bytes);
+    log(`consumption: read1=${c1.ok ? hex(c1.bytes) : 'fail'}\n             read2=${c2.ok ? hex(c2.bytes) : 'fail'}\n             → ${consumed ? 'reply is ONE-SHOT (cleared by reading)' : 'reply persists across reads'}`, 'info');
+
+    /* ---- conclusions ---- */
+    const concl = [];
+
+    const unknownAllOk = unknownReplies.filter(Boolean).every(b => b[3] === 0x01);
+    const unknownAnyErr = unknownReplies.filter(Boolean).some(b => b[3] === 0xFF);
+    if (unknownAnyErr) {
+      concl.push('The device rejects unknown opcodes (status 0xFF) → byte[3] is a real result code, and every command is validated.');
+    } else if (unknownAllOk) {
+      concl.push('Unknown opcodes get status 0x01 too → the device does not validate commands; the reply is a blind latch of whatever we wrote.');
+    }
+
+    if (b1 && b1[3] !== 0xDE && b1[3] !== 0x07) {
+      concl.push(`byte[3] is overwritten by the firmware: we wrote 0xDE and 0x07, and got back 0x${b1[3].toString(16).toUpperCase()} both times.`);
+    } else if (b1) {
+      concl.push('byte[3] came back as written → no status byte; the frame is a pure echo.');
+    }
+
+    if (b1 && b2 && sameExcept(new Uint8Array([0x04, 0x19, 0x00, b1[3]]), b2, 3) === false) {
+      concl.push('Other bytes vary between replies → inspect the log.');
+    }
+
+    if (commitAlone && commitAfterInit) {
+      if (commitAlone[3] === 0xFF && commitAfterInit[3] === 0x01) {
+        concl.push('Commit alone = 0xFF (nothing staged), commit after init = 0x01 (accepted) → 0xFF/0x01 are error/success, and we can confirm uploads.');
+      } else if (commitAlone[3] === commitAfterInit[3]) {
+        concl.push(`Commit returns 0x${commitAlone[3].toString(16).toUpperCase()} in both cases. These are single reads issued immediately after the write, so they can show the *previous* command's reply — see the keymap probe, which polls until the reply matches the command it sent.`);
+      }
+    }
+
+    if (consumed) concl.push('Each reply is delivered exactly once — read it right after the command.');
+
+    concl.forEach(c => log('  ⇒ ' + c, 'ok'));
+
+    const table = rows.map(r => {
+      const sent = typeof r.sent === 'string' ? r.sent : hex(new Uint8Array(r.sent));
+      const reply = typeof r.reply === 'string' ? r.reply : hex(r.reply);
+      return `${r.label.padEnd(26)} ${sent}\n${''.padEnd(27)}→ ${reply}`;
+    }).join('\n');
+
+    $('deepOut').innerHTML = `<div class="verdict warn" style="white-space:pre-wrap;font-family:var(--mono);font-size:12px">${
+      escapeHtml(table + '\n\n' + concl.map(c => '⇒ ' + c).join('\n\n'))
+    }</div>`;
+
+    log('════ mailbox test done ════', 'info');
+  }
+
+  /* ---------- keymap ---------- */
+
+  const FACTORY_KEYS = [
+    [1,41,"Esc",0,0,28,28],
+    [2,58,"F1",46,0,28,28],
+    [3,59,"F2",84,0,28,28],
+    [4,60,"F3",122,0,28,28],
+    [5,61,"F4",160,0,28,28],
+    [6,62,"F5",207,0,28,28],
+    [7,63,"F6",244,0,28,28],
+    [8,64,"F7",282,0,28,28],
+    [9,65,"F8",320,0,28,28],
+    [10,66,"F9",367,0,28,28],
+    [11,67,"F10",405,0,28,28],
+    [12,68,"F11",443,0,28,28],
+    [13,69,"F12",481,0,28,28],
+    [19,53,"~`",0,47,28,28],
+    [20,30,"!1",37,47,28,28],
+    [21,31,"@2",75,47,28,28],
+    [22,32,"#3",113,47,28,28],
+    [23,33,"$4",151,47,28,28],
+    [24,34,"%5",188,47,28,28],
+    [25,35,"^6",226,47,28,28],
+    [26,36,"&7",264,47,28,28],
+    [27,37,"*8",302,47,28,28],
+    [28,38,"(9",339,47,28,28],
+    [29,39,")0",377,47,28,28],
+    [30,45,"_-",415,47,28,28],
+    [31,46,"+=",452,47,28,28],
+    [37,43,"Tab",0,86,46,28],
+    [38,20,"Q",56,86,28,28],
+    [39,26,"W",94,86,28,28],
+    [40,8,"E",132,86,28,28],
+    [41,21,"R",170,86,28,28],
+    [42,23,"T",207,86,28,28],
+    [43,28,"Y",245,86,28,28],
+    [44,24,"U",283,86,28,28],
+    [45,12,"I",321,86,28,28],
+    [46,18,"O",358,86,28,28],
+    [47,19,"P",396,86,28,28],
+    [48,47,"{[",434,86,28,28],
+    [49,48,"}}",471,86,28,28],
+    [55,57,"CapsLock",0,123,55,28],
+    [56,4,"A",65,123,28,28],
+    [57,22,"S",103,123,28,28],
+    [58,7,"D",141,123,28,28],
+    [59,9,"F",179,123,28,28],
+    [60,10,"G",217,123,28,28],
+    [61,11,"H",255,123,28,28],
+    [62,13,"J",292,123,28,28],
+    [63,14,"K",330,123,28,28],
+    [64,15,"L",367,123,28,28],
+    [65,51,":;",405,123,28,28],
+    [66,52,"\"'",443,123,28,28],
+    [67,49,"|\\\\",509,86,47,28],
+    [73,225,"Shift_L",0,161,75,28],
+    [74,29,"Z",84,161,28,28],
+    [75,27,"X",122,161,28,28],
+    [76,6,"C",160,161,28,28],
+    [77,25,"V",197,161,28,28],
+    [78,5,"B",235,161,28,28],
+    [79,17,"N",273,161,28,28],
+    [80,16,"M",311,161,28,28],
+    [81,54,",<",348,161,28,28],
+    [82,55,".>",386,161,28,28],
+    [83,56,"/?",424,161,28,28],
+    [84,229,"Shift_R",462,161,55,28],
+    [85,40,"Enter",481,123,75,28],
+    [91,224,"Ctrl_L",0,199,37,28],
+    [92,227,"Win_L",47,199,37,28],
+    [93,226,"Alt_L",94,199,37,28],
+    [94,44,"Space",141,199,225,28],
+    [95,230,"Alt_R",377,199,28,28],
+    [96,175,"Fn",415,199,28,28],
+    [98,228,"Ctrl_R",453,199,28,28],
+    [99,80,"←",499,208,28,28],
+    [100,81,"↓",536,208,28,28],
+    [101,82,"↑",536,170,28,28],
+    [102,79,"→",574,208,28,28],
+    [103,42,"Backspace",490,47,66,28],
+    [117,74,"home",582,47,28,28],
+    [118,75,"PgUp",582,86,28,28],
+    [119,76,"Delete",528,0,28,28],
+    [121,78,"PgDn",582,123,28,28],
+  ];
+
+  const SLOT_MAGIC_AT = 574;      // AA 55 trailer, last two bytes of the 576-byte table
+  const TABLE_SIZE = 576;         // 144 x 4 bytes = 144 slots
+  const MAX_KEY_INDEX = 142;      // slot 143 overlaps the trailer bytes
+
+  // Keys the vendor encoder skips entirely on the Fn layer: fnlayer_disable="1" in
+  // rgb-keyboard.xml, matched against the vector at [esi+82C] in the encoder (0x4185BA).
+  // The firmware owns those combinations, so a value in their slot is never read.
+  const FN_LOCKED = new Set([1, 67, 92, 96, 103, 117]);
+
+  function modBit(usage) {
+    if (usage >= 0xE0 && usage <= 0xE7) return 1 << (usage - 0xE0);
+    return 0;
+  }
+
+  function encodeRecord(usage, media = false) {
+    // type 3 = consumer/media usage: [03][lo][hi][00] (0x418866 for the seven fixed functions,
+    // 0x4189F4 for the 16-bit type). The page has to be explicit: Mute is 0xE2, exactly the
+    // same number as keyboard Left Alt, and only the record type tells the firmware which HID
+    // usage page to send it on.
+    if (media) return [0x03, usage & 0xFF, (usage >> 8) & 0xFF, 0x00];
+    // type 2 = keyboard key: [02][modifier][usage][00]
+    //
+    // 0x418600 handles it in this order: byte1 = the usage, byte2 = modbit(usage); then, if the
+    // usage is a modifier (0xE0-0xE7) with no explicit modifier field, byte1 becomes the bit and
+    // byte2 is forced back to 0 (0x418648 + 0x418662). So a modifier is [02][bit][00][00] — the
+    // bit must NOT also go into the usage byte, or the firmware sees usage 1/2/4/8/… instead of
+    // Shift/Ctrl/Alt/Win. That was the misplaced-modifier bug.
+    const bit = modBit(usage);
+    if (bit) return [0x02, bit, 0x00, 0x00];
+    return [0x02, 0x00, usage, 0x00];
+  }
+
+  function parseMapText(text) {
+    const out = [];
+    for (const raw of text.split('\n')) {
+      const line = raw.trim();
+      if (!line || line.startsWith('#')) continue;
+      const parts = line.split(/\s+/);
+      if (parts.length < 2) continue;
+      const idx = parseInt(parts[0], 10);
+      // A consumer/media usage always carries a c: prefix (c:0xE2 = Mute, c:0xCD = Play/Pause).
+      // Without it the value is a keyboard usage: 0xE2 is Left Alt, and numeric ranges cannot
+      // separate the pages (0xCD/0xB5 are below 0xE7 but are reserved keyboard usages).
+      const media = /^c:/i.test(parts[1]);
+      const tok = media ? parts[1].slice(2) : parts[1];
+      const usage = parseInt(tok.replace(/^0x/i, ''), /^0x/i.test(tok) ? 16 : 10);
+      if (!Number.isFinite(idx) || !Number.isFinite(usage)) continue;
+      if (idx < 0 || idx > MAX_KEY_INDEX) continue;
+      if (media ? (usage < 1 || usage > 0xFFFF) : (usage < 0 || usage > 0xFF)) continue;
+      out.push({ idx, usage, media, name: parts.slice(2).join(' ') });
+    }
+    return out;
+  }
+
+  function buildTable(entries, corruptTrailer = false, layerFn = false) {
+    // Straight from 0x418420: the 780-byte scratch buffer is memset to 0 (0x4184B1), then each
+    // key is written at `key_index * 4` (0x4185E9) — so the record for key_index N lives at
+    // offset N*4. Unused slots stay 00 00 00 00 (they are NOT filled with 05 03 00 00), slot 0
+    // is never written, and bytes 574-575 carry AA 55.
+    const buf = new Uint8Array(TABLE_SIZE);
+    for (const e of entries) {
+      // On the Fn layer a zero is not a record, it is the absence of one: the slot must stay
+      // zeroed so the firmware keeps its built-in Fn behaviour. The vendor encoder also skips
+      // every fnlayer_disable key outright (0x4185BA), so never write those slots.
+      if (layerFn && (!e.usage || FN_LOCKED.has(e.idx))) continue;
+      buf.set(encodeRecord(e.usage, e.media), e.idx * 4);
+    }
+    buf[SLOT_MAGIC_AT] = corruptTrailer ? 0x00 : 0xAA;
+    buf[SLOT_MAGIC_AT + 1] = corruptTrailer ? 0x00 : 0x55;
+    return buf;
+  }
+
+  /* ---------- key editor ---------- */
+
+  // Names for the picker and for labelling changed keys on the board. Keyboard/Keypad page
+  // usages only: the record encoder writes type-2 records, which is what every factory key uses.
+  const USAGE_NAMES = (() => {
+    const m = new Map();
+    for (let i = 0; i < 26; i++) m.set(0x04 + i, String.fromCharCode(65 + i));
+    '1234567890'.split('').forEach((d, i) => m.set(0x1E + i, d));
+    [
+      [0x28, 'Enter'], [0x29, 'Esc'], [0x2A, 'Backspace'], [0x2B, 'Tab'], [0x2C, 'Space'],
+      [0x2D, '- _'], [0x2E, '= +'], [0x2F, '[ {'], [0x30, '] }'], [0x31, '\\ |'],
+      [0x33, '; :'], [0x34, "' \""], [0x35, '` ~'], [0x36, ', <'], [0x37, '. >'], [0x38, '/ ?'],
+      [0x39, 'CapsLock'],
+      [0x46, 'PrintScreen'], [0x47, 'ScrollLock'], [0x48, 'Pause'],
+      [0x49, 'Insert'], [0x4A, 'Home'], [0x4B, 'PageUp'], [0x4C, 'Delete'], [0x4D, 'End'], [0x4E, 'PageDown'],
+      [0x4F, 'Right'], [0x50, 'Left'], [0x51, 'Down'], [0x52, 'Up'],
+      [0x53, 'NumLock'], [0x54, 'KP /'], [0x55, 'KP *'], [0x56, 'KP -'], [0x57, 'KP +'], [0x58, 'KP Enter'],
+      [0x64, 'Non-US \\'], [0x65, 'Menu'], [0x66, 'Power'], [0x67, 'Sleep'], [0x68, 'Wake'],
+      [0xE0, 'Left Ctrl'], [0xE1, 'Left Shift'], [0xE2, 'Left Alt'], [0xE3, 'Left Win'],
+      [0xE4, 'Right Ctrl'], [0xE5, 'Right Shift'], [0xE6, 'Right Alt'], [0xE7, 'Right Win'],
+      [0xAF, 'Fn'],
+    ].forEach(([u, n]) => m.set(u, n));
+    for (let i = 0; i < 12; i++) m.set(0x3A + i, `F${i + 1}`);
+    for (let i = 1; i <= 9; i++) m.set(0x58 + i, `KP ${i}`);
+    m.set(0x62, 'KP 0');
+    m.set(0x63, 'KP .');
+    return m;
+  })();
+
+  const USAGE_GROUPS = [
+    ['Letters', 0x04, 0x1D],
+    ['Digits', 0x1E, 0x27],
+    ['Editing', 0x28, 0x2C],
+    ['Symbols', 0x2D, 0x38],
+    ['Caps Lock + function keys', 0x39, 0x45],
+    ['Navigation', 0x46, 0x52],
+    ['Keypad', 0x53, 0x63],
+    ['Other keys', 0x64, 0x68],
+    ['Modifiers', 0xE0, 0xE7],
+  ];
+
+  // Consumer-page usages the picker offers (record type 0x03, written as `c:0x…` in raw text).
+  // The first seven are the functions the vendor's type-6 encoder can produce (docs/04);
+  // the rest exercise the 16-bit type-12 split and are worth having.
+  const MEDIA_NAMES = new Map([
+    [0xCD, 'Play/Pause'],
+    [0xB7, 'Stop'],
+    [0xB6, 'Previous track'],
+    [0xB5, 'Next track'],
+    [0xE9, 'Volume up'],
+    [0xEA, 'Volume down'],
+    [0xE2, 'Mute'],
+    [0xB8, 'Eject'],
+    [0xB3, 'Fast forward'],
+    [0xB4, 'Rewind'],
+    [0xE8, 'Volume (relative)'],
+    [0x6F, 'Brightness up'],
+    [0x70, 'Brightness down'],
+    [0x0224, 'Browser back'],
+    [0x0225, 'Browser forward'],
+    [0x0223, 'Browser home'],
+    [0x0192, 'Calculator'],
+    [0x018A, 'Email'],
+  ]);
+
+  // 2 hex digits for keyboard usages, 4 for 16-bit consumer usages (0x0224).
+  const hxu = (u) => u.toString(16).toUpperCase().padStart(u > 0xFF ? 4 : 2, '0');
+
+  function usageName(u) {
+    return USAGE_NAMES.get(u) || `0x${hxu(u)}`;
+  }
+
+  // A usage number alone cannot identify the page (0xE2 is both Left Alt and Mute), so every
+  // row carries a media flag and every label/token includes it. `c:` is the raw-text marker.
+  function usageLabel(u, media) {
+    return media ? `Media: ${MEDIA_NAMES.get(u) || '0x' + hxu(u)}` : usageName(u);
+  }
+
+  function usageToken(u, media) {
+    return (media ? 'c:0x' : '0x') + hxu(u);
+  }
+
+  function usageFull(u, media) {
+    return `${usageLabel(u, media)} ${usageToken(u, media)}`;
+  }
+
+  const rowUsage = (k) => usageFull(k.usage, k.media);
+  const rowToken = (k) => usageToken(k.usage, k.media);
+  // <option> values: keyboard options use the decimal usage, media options carry the c: prefix.
+  const optionValue = (k) => k.media ? `c:0x${hxu(k.usage)}` : String(k.usage);
+
+  // Short labels so a 28 px key does not have to render "CapsLock" or "Backspace".
+  const KM_LABEL = {
+    Esc: 'Esc', Delete: 'Del', home: 'Home', PgUp: 'PgUp', PgDn: 'PgDn',
+    CapsLock: 'Caps', Backspace: 'Bksp', PrintScreen: 'PrtSc', ScrollLock: 'ScrLk',
+    Shift_L: 'Shift', Shift_R: 'Shift', Ctrl_L: 'Ctrl', Ctrl_R: 'Ctrl',
+    Alt_L: 'Alt', Alt_R: 'Alt', Win_L: 'Win',
+  };
+  const kmLabel = (name) => KM_LABEL[name] || name;
+
+  // idx/usage/name/x/y/w/h come from FACTORY_KEYS (vendor rgb-keyboard.xml geometry).
+  // factory = what the vendor ships, applied = what the keyboard is running right now,
+  // usage = what the editor currently says. Amber keys differ from factory; the dirty
+  // list is usage vs applied, i.e. what an upload would actually change.
+  //
+  // Every row also carries `media` (true = consumer page / record 03, false = keyboard page /
+  // record 02), plus `appliedMedia` and `factoryMedia`. The page is stored separately because
+  // the usage number alone is ambiguous: 0xE2 is Left Alt on the keyboard page and Mute on the
+  // consumer page. `appliedMedia` exists so changing only the page (0xE2 Alt → 0xE2 Mute) is
+  // still a pending change.
+  //
+  // Two layers share the key list and geometry but not their meaning:
+  //   top (04 11) — a full 81-key table; baseline = the vendor layout (FACTORY_KEYS).
+  //   Fn  (04 27) — an override table; a zero slot means "no override, firmware handles it",
+  //                 so the baseline is 0 for every key, NOT FACTORY_KEYS. Writing the top
+  //                 usages here would rebind Fn+key to the plain key function — a real change.
+  let kmTop = [];
+  let kmFn = [];
+  let kmState = [];
+  let kmLayer = 0;            // 0 = top layer, 1 = Fn layer
+  let kmSel = null;
+
+  // The keyboard cannot report either layer back, so the Fn overrides that are live are only
+  // known to this page. Remember them per browser instead of pretending the layer is empty
+  // after a reload (which would silently delete them on the next upload).
+  const FN_STORE = 'ak820.fn.overrides';
+
+  function kmLoadFnOverrides() {
+    const m = new Map();
+    let rows = [];
+    try { rows = JSON.parse(localStorage.getItem(FN_STORE) || '[]'); }
+    catch (e) { log('stored Fn overrides unreadable — starting from "no overrides"', 'warn'); return m; }
+    for (const row of Array.isArray(rows) ? rows : []) {
+      const [idx, usage, flag] = Array.isArray(row) ? row : [];
+      if (!Number.isInteger(idx) || !Number.isInteger(usage) || usage <= 0) continue;
+      // Old rows are [idx, usage]; media rows append a 1. A value above 0xE7 (except Fn) can
+      // only be consumer, so migrate any such row written before media existed.
+      const media = flag === 1 || flag === true || (usage > 0xE7 && usage !== 0xAF);
+      if (usage <= (media ? 0xFFFF : 0xFF)) m.set(idx, { usage, media });
+    }
+    return m;
+  }
+
+  function kmSaveFnOverrides() {
+    const rows = kmFn.filter(k => k.usage > 0)
+      .map(k => k.media ? [k.idx, k.usage, 1] : [k.idx, k.usage]);
+    try {
+      if (rows.length) localStorage.setItem(FN_STORE, JSON.stringify(rows));
+      else localStorage.removeItem(FN_STORE);
+    } catch (e) {
+      log('could not remember the Fn layer in this browser: ' + e.message, 'warn');
+    }
+  }
+
+  function kmInit() {
+    kmTop = FACTORY_KEYS.map(([idx, usage, name, x, y, w, h]) =>
+      ({ idx, usage, media: false, name, x, y, w, h,
+         factory: usage, factoryMedia: false, applied: usage, appliedMedia: false }));
+    const saved = kmLoadFnOverrides();
+    kmFn = FACTORY_KEYS.map(([idx, , name, x, y, w, h]) => {
+      const over = saved.get(idx) || { usage: 0, media: false };
+      return { idx, usage: over.usage, media: over.media, name, x, y, w, h,
+               factory: 0, factoryMedia: false, applied: over.usage, appliedMedia: over.media };
+    });
+    kmLayer = 0;
+    kmState = kmTop;
+    kmSel = null;
+    kmMirror();
+    renderBoard();
+    renderInspector();
+    renderDirty();
+    renderLayer();
+  }
+
+  function kmSetLayer(n) {
+    if (kmBusy) { log('a transfer is running — wait for it to finish before switching layers', 'warn'); return; }
+    if ((n ? 1 : 0) === kmLayer) return;
+    kmLayer = n ? 1 : 0;
+    kmState = kmLayer ? kmFn : kmTop;
+    kmSel = null;
+    kmMirror();
+    renderBoard();
+    renderInspector();
+    renderDirty();
+    renderLayer();
+    log(`editor now shows the ${kmLayer ? 'Fn' : 'top'} layer`, 'dim');
+  }
+
+  function renderLayer() {
+    $('btnLayerTop').classList.toggle('on', kmLayer === 0);
+    $('btnLayerFn').classList.toggle('on', kmLayer === 1);
+    $('btnLayerTop').setAttribute('aria-pressed', kmLayer === 0 ? 'true' : 'false');
+    $('btnLayerFn').setAttribute('aria-pressed', kmLayer === 1 ? 'true' : 'false');
+    $('kmLayerNote').textContent = kmLayer
+      ? 'Fn layer: only the keys you set are sent — every other slot stays zero, which is the firmware default.'
+      : 'Top layer: the full 81-key table the keyboard types without Fn.';
+    $('btnKmRestore').textContent = kmLayer ? 'Clear all Fn overrides' : 'Restore factory map';
+    $('btnKmResetKey').textContent = kmLayer ? 'Back to firmware default' : 'Reset this key';
+  }
+
+  function kmMirror() {
+    // On the Fn layer 0x00 reads as "no override" (the slot is left zeroed), not as "sends
+    // nothing" — kmApplyText maps it straight back onto usage 0, so the text round-trips.
+    // Media usages keep their c: prefix so the page survives a text round-trip.
+    $('kmMap').value = kmState
+      .map(k => `${String(k.idx).padStart(3, ' ')}  ${usageToken(k.usage, k.media)}  ${k.name}`)
+      .join('\n');
+  }
+
+  function kmSelected() {
+    return kmState.find(k => k.idx === kmSel) || null;
+  }
+
+  function kmPending() {
+    return kmState.filter(k => k.usage !== k.applied || k.media !== k.appliedMedia);
+  }
+
+  function kmLocked(k) {
+    return kmLayer === 1 && FN_LOCKED.has(k.idx);
+  }
+
+  function renderBoard() {
+    const board = $('kmBoard');
+    board.textContent = '';
+    for (const k of kmState) {
+      const locked = kmLocked(k);
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.disabled = locked;
+      el.className = 'km-key'
+        + (locked ? ' fnlock' : '')
+        + ((k.usage !== k.factory || k.media !== k.factoryMedia) ? ' changed' : '')
+        + (k.idx === kmSel ? ' sel' : '');
+      el.style.left = k.x + 'px';
+      el.style.top = k.y + 'px';
+      el.style.width = k.w + 'px';
+      el.style.height = k.h + 'px';
+      el.textContent = kmLabel(k.name);
+      if (locked) {
+        el.title = `${k.name} · key_index ${k.idx} · fnlayer_disable="1" in the vendor layout, `
+          + 'so the firmware owns this Fn combination and has no slot for it';
+      } else if (kmLayer === 1) {
+        el.title = `Fn + ${k.name} · key_index ${k.idx} · ` + (k.usage
+          ? `override → ${rowUsage(k)}`
+          : 'no override — firmware default (slot stays 00 00 00 00)');
+      } else {
+        el.title = `${k.name} · key_index ${k.idx} · offset ${k.idx * 4} · sends ${rowUsage(k)}`
+          + ((k.usage !== k.factory || k.media !== k.factoryMedia)
+            ? ` · factory was ${usageFull(k.factory, k.factoryMedia)}` : '');
+      }
+      el.addEventListener('click', () => kmSelect(k.idx));
+      board.appendChild(el);
+    }
+  }
+
+  function kmSelect(idx) {
+    kmSel = idx;
+    renderBoard();
+    renderInspector();
+  }
+
+  function usageOptionsHtml() {
+    // The Fn layer's "do nothing / firmware default" is usage 0 with no record written, so it
+    // has to be a selectable option there. On the top layer 0 would mean "send nothing", which
+    // is not what the placeholder says — keep it out.
+    let html = kmLayer === 1
+      ? '<option value="0">Firmware default — no override</option>'
+      : '<option value="" disabled>— choose a function —</option>';
+    for (const [label, lo, hi] of USAGE_GROUPS) {
+      let opts = '';
+      for (let u = lo; u <= hi; u++) {
+        if (!USAGE_NAMES.has(u)) continue;
+        opts += `<option value="${u}">${escapeHtml(USAGE_NAMES.get(u))} — 0x${hx(u)}</option>`;
+      }
+      if (opts) html += `<optgroup label="${label}">${opts}</optgroup>`;
+    }
+    let mediaOpts = '';
+    for (const [u, label] of MEDIA_NAMES) {
+      mediaOpts += `<option value="c:0x${hxu(u)}">Media: ${escapeHtml(label)} — c:0x${hxu(u)}</option>`;
+    }
+    html += `<optgroup label="Media">${mediaOpts}</optgroup>`;
+    html += `<optgroup label="Vendor"><option value="${0xAF}">Fn — 0xAF</option></optgroup>`;
+    return html;
+  }
+
+  let kmOptionsFor = null;
+
+  function renderInspector() {
+    const k = kmSelected();
+    const locked = !!k && kmLocked(k);
+    $('kmUsage').disabled = !k || locked;
+    $('kmRaw').disabled = !k || locked;
+    $('btnKmResetKey').disabled = !k || locked;
+    if (!k) {
+      $('kmSelName').textContent = 'No key selected';
+      $('kmSelMeta').textContent = 'click a key on the left';
+      $('kmUsage').innerHTML = '';
+      kmOptionsFor = null;
+      $('kmRaw').value = '';
+      return;
+    }
+    $('kmSelName').textContent = kmLayer === 1 ? `Fn + ${k.name}` : k.name;
+    if (locked) {
+      $('kmSelMeta').textContent = `key_index ${k.idx} · fnlayer_disable — the firmware owns this combination`;
+    } else if (kmLayer === 1) {
+      $('kmSelMeta').textContent = `key_index ${k.idx} · ` + (k.usage
+        ? `override ${rowUsage(k)}`
+        : 'no override — firmware default');
+    } else {
+      $('kmSelMeta').textContent = `key_index ${k.idx} · record at offset ${k.idx * 4} · factory ${usageFull(k.factory, k.factoryMedia)}`;
+    }
+
+    const sel = $('kmUsage');
+    if (kmOptionsFor !== kmLayer) { sel.innerHTML = usageOptionsHtml(); kmOptionsFor = kmLayer; }
+    const custom = sel.querySelector('option[data-custom]');
+    if (custom) custom.remove();
+    sel.value = optionValue(k);
+    if (sel.value !== optionValue(k)) {
+      // raw-hex input can set a usage the picker does not list; show it rather than lying
+      const opt = document.createElement('option');
+      opt.dataset.custom = '1';
+      opt.value = optionValue(k);
+      opt.textContent = `${rowUsage(k)} (custom)`;
+      sel.appendChild(opt);
+      sel.value = optionValue(k);
+    }
+    $('kmRaw').value = rowToken(k);
+  }
+
+  function renderDirty() {
+    const pending = kmPending();
+    if (pending.length) {
+      $('kmDirty').textContent = `${pending.length} pending change${pending.length === 1 ? '' : 's'}:\n`
+        + pending.map(k => kmLayer === 1
+          ? `  #${k.idx} ${k.name.padEnd(10)} ${k.applied ? usageFull(k.applied, k.appliedMedia) : 'default'} → ${k.usage ? rowUsage(k) : 'default'}`
+          : `  #${k.idx} ${k.name.padEnd(10)} ${usageToken(k.applied, k.appliedMedia)} → ${rowToken(k)}  ${usageLabel(k.usage, k.media)}`).join('\n');
+    } else {
+      $('kmDirty').textContent = kmLayer === 1
+        ? 'No pending changes — this editor matches the Fn layer it last wrote.'
+        : 'No pending changes — the editor matches the keyboard.';
+    }
+    $('btnKmUpload').textContent = pending.length
+      ? `Upload ${pending.length} change${pending.length === 1 ? '' : 's'}`
+      : 'Upload changes';
+  }
+
+  function kmSetUsage(u, media = false) {
+    const k = kmSelected();
+    if (!k) return false;
+    if (kmLocked(k)) {
+      log(`${k.name} is fnlayer_disable in the vendor layout — the firmware handles that Fn combination, so it has no slot to remap`, 'warn');
+      return false;
+    }
+    // A value above the keyboard range is not a keyboard usage. Media usages are never inferred
+    // from the number: 0xE2 is Left Alt and Mute, and 0xCD/0xB5 are reserved keyboard usages that
+    // are also media functions. The Media picker passes true; the raw box uses the c: prefix.
+    if (!Number.isInteger(u)) { log(`usage must be a whole number (got ${u})`, 'warn'); return false; }
+    if (media ? (u < 1 || u > 0xFFFF) : (u < 0 || u > 0xFF)) {
+      log(media ? `media usage must be 0x0001–0xFFFF (got ${u})` : `keyboard usage must be 0x00–0xFF (got ${u})`, 'warn');
+      return false;
+    }
+    if (!media && u > 0xE7 && u !== 0xAF) {
+      log(`0x${hxu(u)} is not a keyboard usage — media/consumer functions need the c: prefix (e.g. c:0x${hxu(u)})`, 'warn');
+      return false;
+    }
+    // On the top layer 0x00 is not "no key": encodeRecord would still write an empty type-2
+    // record (02 00 00 00), which the vendor never sends. Restoring the factory usage is the
+    // way to undo a change, so refuse the value instead of staging something unproven.
+    if (kmLayer === 0 && !media && u === 0) {
+      log('0x00 is not a key on the top layer — use "Reset this key" to put the factory function back', 'warn');
+      return false;
+    }
+    k.usage = u;
+    k.media = media;
+    kmMirror();
+    renderBoard();
+    renderInspector();
+    renderDirty();
+    const label = kmLayer === 1 ? `Fn + ${k.name}` : k.name;
+    const unchanged = u === k.applied && media === k.appliedMedia;
+    log(kmLayer === 1 && u === 0
+      ? `${label} (key_index ${k.idx}) → firmware default (slot left zeroed)`
+      : `${label} (key_index ${k.idx}) → ${usageFull(u, media)}${unchanged ? ' (unchanged)' : ''}`, 'dim');
+    return true;
+  }
+
+  // Pull values back out of the textarea. Upload and preview both go through this so the
+  // visible text and the board can never disagree.
+  function kmApplyText() {
+    const entries = parseMapText($('kmMap').value);
+    if (!entries.length) return false;
+    const byIdx = new Map(kmState.map(k => [k.idx, k]));
+    let used = 0, ignored = 0, blocked = 0, zeroed = 0, invalid = 0;
+    for (const e of entries) {
+      const k = byIdx.get(e.idx);
+      if (!k) { ignored++; continue; }
+      if (!e.media && e.usage > 0xE7 && e.usage !== 0xAF) { invalid++; continue; }
+      if (kmLayer === 0 && !e.media && e.usage === 0) { zeroed++; continue; }
+      if (kmLocked(k) && e.usage !== 0) { blocked++; continue; }
+      k.usage = e.usage;
+      k.media = e.media;
+      used++;
+    }
+    if (ignored) log(`map text: ignored ${ignored} line(s) with a key_index the layout does not have`, 'warn');
+    if (invalid) log(`map text: ignored ${invalid} keyboard usage(s) above 0xE7 — media/consumer values need the c: prefix`, 'warn');
+    if (zeroed) log(`map text: ignored ${zeroed} 0x00 value(s) on the top layer — 0x00 is not a key there`, 'warn');
+    if (blocked) log(`map text: ignored ${blocked} value(s) on fnlayer_disable keys — the firmware owns those Fn combinations`, 'warn');
+    renderBoard();
+    renderInspector();
+    renderDirty();
+    return used > 0;
+  }
+
+  const hx = (b) => b.toString(16).toUpperCase().padStart(2, '0');
+
+  // The mailbox is a single 64-byte feature buffer that SetFeature writes into and the
+  // firmware stamps asynchronously. Reading it right after a write hands back *our own
+  // frame* with byte[3] still 0x00 — that is the 0-1 ms "status 0x00" seen in the log.
+  //
+  // A real answer needs two things:
+  //   byte[1] == the command we sent   (the reply echoes the command)
+  //   byte[3] != 0x00                  (the firmware has stamped a result code)
+  // and it only ever appears once the device has finished processing, so we settle first
+  // and then poll.
+  async function waitReply(cmdByte, label, timeoutMs = 6000, settleMs = 220) {
+    await sleep(settleMs);
+    const t0 = performance.now();
+    let attempts = 0;
+    const seen = [];
+    while (performance.now() - t0 < timeoutMs) {
+      attempts++;
+      const r = await tryFeatureRead(1500);
+      const ms = Math.round(performance.now() - t0);
+      if (r.ok && r.bytes.length >= 4) {
+        const f = r.bytes;
+        const tag = `${hex(f.subarray(0, 5))}@${ms}ms`;
+        if (!seen.includes(tag)) seen.push(tag);
+        if (f[0] === 0x04 && f[1] === cmdByte && f[3] !== 0x00) {
+          const s = f[3];
+          const verdict = s === 0x01 ? 'OK' : s === 0xFF ? 'REJECTED' : '?';
+          log(`  ${label}: status 0x${hx(s)} ${verdict}  (${ms} ms after settle, ${attempts} read${attempts === 1 ? '' : 's'})`,
+              s === 0x01 ? 'ok' : 'warn');
+          if (seen.length > 1) log(`    frames seen: ${seen.join('  |  ')}`, 'dim');
+          return { status: s, raw: f, ms };
+        }
+      }
+      await sleep(60);
+    }
+    log(`  ${label}: no stamped reply within ${timeoutMs} ms — saw ${seen.length ? seen.join('  |  ') : 'nothing'}`, 'warn');
+    return { status: null, raw: null, ms: timeoutMs };
+  }
+
+  // Exactly the vendor sequence from 0x418420 / 0x435130: no probe, no extra command.
+  //   04 18                        begin
+  //   04 11 00 00 00 00 00 00 09   top layer, 9 chunks   (04 27 = Fn layer)
+  //   9 x 64 bytes                 the 576-byte table, bare, back to back
+  //   04 02                        commit
+  //   04 F0                        end
+  // The vendor's Device::Write skips its read-back entirely for >64-byte payloads, so the
+  // chunks must go out with no reads between them.
+  // The device NAKs a 64-byte feature write for the whole 5 s HID timeout when it is not ready
+  // for it (observed: 5.007 s between the announce reply and the failure). The vendor's
+  // Device::Write retries a failed SetFeature up to 10 times (0x44F050), so we do the same with
+  // a short backoff instead of hammering it.
+  async function sendChunk(buf, i, chunks, attempts = 4) {
+    const frame = buf.subarray(i * 64, (i + 1) * 64);
+    for (let a = 1; a <= attempts; a++) {
+      const t = performance.now();
+      try {
+        await device.sendFeatureReport(0, frame);
+        const ms = Math.round(performance.now() - t);
+        log(`  chunk ${i + 1}/${chunks} ok in ${ms} ms${a > 1 ? ` (attempt ${a})` : ''}  ${hex(frame.subarray(0, 4))}`, a > 1 ? 'ok' : 'dim');
+        return true;
+      } catch (e) {
+        log(`  chunk ${i + 1}/${chunks} attempt ${a}/${attempts} FAILED after ${Math.round(performance.now() - t)} ms: ${e.message}  ${hex(frame.subarray(0, 4))}`, 'warn');
+        if (a < attempts) await sleep(250);
+      }
+    }
+    return false;
+  }
+
+  async function sendTable(buf, layerFn = false) {
+    const steps = [];
+    const cmd = layerFn ? 0x27 : 0x11;
+
+    await send(new Uint8Array([0x04, 0x18]));
+    const begin = await waitReply(0x18, 'begin 04 18');
+    steps.push(['begin', begin]);
+    if (begin.status !== 0x01) {
+      // Only happens when a previous transfer is still in flight (two overlapping uploads) or
+      // the device went away. Never stage data on top of a rejected/missing begin.
+      log(`  ⇒ begin ${begin.status === null ? 'got no reply' : 'rejected (0x' + hx(begin.status) + ')'} — aborting before any data is staged`, 'err');
+      await send(new Uint8Array([0x04, 0xF0])).catch(() => {});
+      steps.push(['aborted', { status: begin.status, ms: 0 }]);
+      return steps;
+    }
+
+    const announce = new Uint8Array(64);
+    announce[0] = 0x04;
+    announce[1] = cmd;
+    announce[8] = 0x09;
+    await device.sendFeatureReport(0, announce);
+    log(`SEND  ${hex(announce)}`, 'info');
+    const ann = await waitReply(cmd, `announce 04 ${hx(cmd)}`);
+    steps.push(['announce', ann]);
+    if (ann.status !== 0x01) {
+      // Same rule as the begin: without a confirmed data phase the chunks would land in a
+      // session the firmware never opened. Abort instead of staging blind.
+      log(`  ⇒ announce ${ann.status === null ? 'got no reply' : 'rejected (0x' + hx(ann.status) + ')'} — aborting before any chunk is staged`, 'err');
+      await send(new Uint8Array([0x04, 0xF0])).catch(() => {});
+      steps.push(['aborted', { status: ann.status, ms: 0 }]);
+      return steps;
+    }
+
+    // give the firmware a moment to actually enter the data phase before the first chunk
+    await sleep(120);
+
+    const chunks = 9;
+    const t0 = performance.now();
+    for (let i = 0; i < chunks; i++) {
+      if (!await sendChunk(buf, i, chunks)) {
+        log(`  ⇒ chunk ${i + 1} refused 4 times — aborting staging`, 'err');
+        await send(new Uint8Array([0x04, 0xF0])).catch(() => {});
+        steps.push(['chunks', { status: null, ms: Math.round(performance.now() - t0) }]);
+        return steps;
+      }
+      // Chromium queues feature writes asynchronously, unlike the vendor's synchronous
+      // HidD_SetFeature, so a 9-frame burst can outrun the firmware. Pace them.
+      if (i < chunks - 1) await sleep(12);
+    }
+    log(`SENT  ${chunks} x 64-byte chunks (${buf.length} bytes) in ${Math.round(performance.now() - t0)} ms`, 'dim');
+
+    await send(new Uint8Array([0x04, 0x02]));
+    steps.push(['commit', await waitReply(0x02, 'commit 04 02')]);
+
+    await send(new Uint8Array([0x04, 0xF0]));
+    steps.push(['end', await waitReply(0xF0, 'end 04 F0')]);
+
+    return steps;
+  }
+
+  // A transfer that never reached the device (or was aborted) — distinct from a rejected
+  // commit, which is the firmware answering "I read your data and I refuse it".
+  function kmTransportFailed(steps) {
+    return steps.some(s =>
+      s[0] === 'chunks'
+      || s[0] === 'aborted'
+      || (s[0] === 'begin' && s[1].status !== 0x01));
+  }
+
+  function stepTable(steps) {
+    const rows = steps.map(([name, r]) => {
+      const s = r.status;
+      const color = s === 0x01 ? 'var(--ok)' : s === 0xFF ? 'var(--err)' : 'var(--warn)';
+      const text = s === null ? 'no reply' : `0x${hx(s)}`;
+      return `<tr><td>${name}</td><td style="color:${color}">${text}</td><td style="text-align:right">${r.ms} ms</td></tr>`;
+    }).join('');
+    return `<table style="width:100%;margin-top:10px"><thead><tr><th>step</th><th>status</th><th style="text-align:right">round trip</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  function renderKm(outHtml) { $('kmOut').innerHTML = outHtml; }
+
+  async function kmPreview() {
+    kmApplyText();
+    const entries = parseMapText($('kmMap').value);
+    const fn = kmLayer === 1;
+    const buf = buildTable(entries, false, fn);
+    const written = entries.filter(e => !fn || (e.usage && !FN_LOCKED.has(e.idx)));
+    const seen = new Set(written.map(e => e.idx));
+    log(`preview: ${entries.length} keys parsed, ${seen.size} slots written, table ${buf.length} bytes`, 'info');
+    const head = Array.from(buf.slice(0, 16), hx).join(' ');
+    const tail = Array.from(buf.slice(560), hx).join(' ');
+    renderKm(`<div class="verdict" style="font-family:var(--mono);font-size:12px;white-space:pre-wrap">${escapeHtml(
+      `layer: ${fn ? 'Fn (04 27)' : 'top (04 11)'}\nentries: ${entries.length}\nslots written: ${seen.size} (record at key_index*4)\nother slots: zero-filled${fn ? ' (= firmware default on the Fn layer)' : ''}\nslot 0: ${head.startsWith('00 00 00 00') ? 'empty' : head.slice(0, 11)}\ntable: ${buf.length} bytes\nfirst 16: ${head}\nlast 16:  ${tail}`
+    )}</div>`);
+  }
+
+  async function kmProbe() {
+    if (kmBusy) { log('a transfer is already running — ignoring this click', 'warn'); return; }
+    kmSetBusy(true);
+    try { await kmProbeNow(); }
+    finally { kmSetBusy(false); }
+  }
+
+  async function kmProbeNow() {
+    const fn = kmLayer === 1;
+    const layerName = fn ? 'Fn layer' : 'top layer';
+    const entries = parseMapText($('kmMap').value);
+    const good = buildTable(entries, false, fn);
+    const bad = buildTable(entries, true, fn);
+
+    log(`──── keymap validation probe (${layerName}) ────`, 'info');
+    log('A · trailer zeroed (content identical, only AA 55 removed)', 'info');
+    const a = await sendTable(bad, fn);
+    if (kmTransportFailed(a)) {
+      const msg = 'Transport failed before the commit — stopping here. Nothing was staged or applied. See the chunk lines above for how many attempts the device refused.';
+      log('  ⇒ ' + msg, 'err');
+      renderKm(`<div class="verdict err">${escapeHtml(msg)}</div>${stepTable(a)}`);
+      log('──── keymap probe done ────', 'info');
+      return;
+    }
+    log('B · trailer present', 'info');
+    const b = await sendTable(good, fn);
+    if (kmTransportFailed(b)) {
+      const msg = `Transport failed on the second packet — stopping here. B is the ${fn ? 'Fn layer as currently edited (zeros plus your overrides)' : 'factory map'}, so nothing should have changed.`;
+      log('  ⇒ ' + msg, 'err');
+      renderKm(`<div class="verdict err">${escapeHtml(msg)}</div>`
+        + `<p class="hint" style="margin:10px 0 0">A · trailer zeroed</p>${stepTable(a)}`
+        + `<p class="hint" style="margin:12px 0 0">B · trailer present</p>${stepTable(b)}`);
+      log('──── keymap probe done ────', 'info');
+      return;
+    }
+
+    const sa = (a.find(s => s[0] === 'commit') || [])[1]?.status ?? null;
+    const sb = (b.find(s => s[0] === 'commit') || [])[1]?.status ?? null;
+
+    let verdict, cls;
+    if (sa === 0xFF && sb === 0x01) {
+      verdict = 'The firmware validates the packet: without the AA 55 trailer the commit is rejected (0xFF), with it the commit is accepted (0x01). The 576-byte layout is correct, and the transport works.';
+      cls = 'ok';
+    } else if (sa === 0x01 && sb === 0x01) {
+      verdict = `Both commits accepted — the trailer is not what the firmware validates, but uploads do go through. Keys should be untouched (${fn ? 'B re-sent the Fn layer exactly as it was' : 'factory map'}). Check that the keyboard still types normally.`;
+      cls = 'ok';
+    } else if (sa === 0xFF && sb === 0xFF) {
+      verdict = 'Both commits rejected, now with fresh replies — so it is genuinely the staged data, not a timing artefact. Do not start editing keys yet.';
+      cls = 'err';
+    } else {
+      verdict = `Mixed result: trailer-less commit ${sa === null ? 'no reply' : '0x' + hx(sa)}, normal commit ${sb === null ? 'no reply' : '0x' + hx(sb)}. Check the step tables.`;
+      cls = 'warn';
+    }
+
+    log('  ⇒ ' + verdict, cls === 'ok' ? 'ok' : 'warn');
+    renderKm(`<div class="verdict ${cls}">${escapeHtml(verdict)}</div>`
+      + `<p class="hint" style="margin:10px 0 0">A · trailer zeroed</p>${stepTable(a)}`
+      + `<p class="hint" style="margin:12px 0 0">B · trailer present</p>${stepTable(b)}`);
+    log('──── keymap probe done ────', 'info');
+  }
+
+  async function kmRemapTest() {
+    // Ground truth: the mailbox lies, the keyboard does not. One obvious change — CapsLock
+    // (key_index 55) becomes the letter x — then check what the keyboard actually types.
+    // On the Fn layer the same slot means Fn+CapsLock, which is a clean way to prove the
+    // 04 27 table is live without touching any key the top layer uses.
+    if (!kmState.length) { log('key map not initialised — reload the page', 'err'); return; }
+    if (kmBusy) { log('a transfer is already running — ignoring this click', 'warn'); return; }
+    const caps = kmState.find(k => k.idx === 55);
+    if (!caps) { log('key_index 55 (CapsLock) not present in the layout', 'err'); return; }
+    const combo = kmLayer === 1 ? 'Fn+CapsLock' : 'CapsLock';
+    log(`──── remap test: ${combo} idx 55  ${caps.usage ? usageFull(caps.usage, caps.media) : 'default'} → 0x1B (letter x) ────`, 'info');
+    caps.usage = 0x1B;
+    caps.media = false;
+    kmMirror();
+    renderBoard();
+    renderInspector();
+    renderDirty();
+    if (!await kmUpload()) return;
+    const msg = kmLayer === 1
+      ? 'Now press Fn+CapsLock in a text field: it should type the letter x, while plain CapsLock keeps toggling caps. '
+        + '"Back to firmware default" (or "Clear all Fn overrides") removes it.'
+      : 'Now press CapsLock in a text field: it should type the letter x and stop toggling caps. '
+        + '"Reset this key" or "Restore factory map" puts CapsLock back.';
+    log('  ⇒ ' + msg, 'info');
+    renderKm($('kmOut').innerHTML + `<div class="verdict warn" style="margin-top:10px">${escapeHtml(msg)}</div>`);
+  }
+
+  // Only one feature-transfer sequence may run at a time. The mailbox has a single reply slot,
+  // so a second overlapping upload both corrupts staging and steals the first one's commit
+  // reply — observed as "04 18 → 0xFF" plus a bogus "upload rejected" after a double click.
+  let kmBusy = false;
+
+  const KM_ACTIONS = ['btnKmUpload', 'btnKmRestore', 'btnKmProbe', 'btnKmRemapTest', 'btnKmPreview', 'btnKmLoad', 'btnLayerTop', 'btnLayerFn'];
+
+  function kmSetBusy(on) {
+    kmBusy = on;
+    for (const id of KM_ACTIONS) $(id).disabled = on || !device;
+  }
+
+  async function kmUpload() {
+    if (kmBusy) { log('a transfer is already running — ignoring this click', 'warn'); return false; }
+    kmSetBusy(true);
+    try { return await kmUploadNow(); }
+    finally { kmSetBusy(false); }
+  }
+
+  async function kmUploadNow() {
+    if (!kmState.length) { log('key map not initialised — reload the page', 'err'); return false; }
+    if (!kmApplyText()) { log('no entries to upload', 'warn'); return false; }
+    const fn = kmLayer === 1;
+    const layerName = fn ? 'Fn layer' : 'top layer';
+    const entries = kmState.map(({ idx, usage, media, name }) => ({ idx, usage, media, name }));
+    const pending = kmPending();
+    const overrides = entries.filter(e => e.usage && !FN_LOCKED.has(e.idx)).length;
+    log(fn
+      ? `──── Fn layer upload (${overrides} override${overrides === 1 ? '' : 's'}, ${pending.length} changed) ────`
+      : `──── top layer upload (${entries.length} keys, ${pending.length} changed) ────`, 'info');
+    for (const k of pending) {
+      const was = fn && !k.applied ? 'default' : usageFull(k.applied, k.appliedMedia);
+      const now = fn && !k.usage ? 'default' : rowUsage(k);
+      log(`  #${k.idx} ${fn ? 'Fn+' : ''}${k.name}: ${was} → ${now}`, 'info');
+    }
+    const steps = await sendTable(buildTable(entries, false, fn), fn);
+    const commit = (steps.find(s => s[0] === 'commit') || [])[1]?.status ?? null;
+    if (kmTransportFailed(steps)) {
+      const msg = 'The keyboard refused the 576-byte data transfer — nothing was staged, nothing changed.';
+      log('  ⇒ ' + msg, 'err');
+      renderKm(`<div class="verdict err">${escapeHtml(msg)}</div>${stepTable(steps)}`);
+      return false;
+    }
+    const ok = commit === 0x01;
+    if (ok) {
+      for (const k of kmState) { k.applied = k.usage; k.appliedMedia = k.media; }
+      if (fn) kmSaveFnOverrides();
+      renderBoard();
+      renderDirty();
+    }
+    const msg = ok
+      ? `Upload accepted (commit 0x01) — the ${layerName} is now live on the keyboard.`
+      : `Upload rejected (commit ${commit === null ? 'no reply' : '0x' + hx(commit)}). Nothing was applied.`;
+    log('  ⇒ ' + msg, ok ? 'ok' : 'err');
+    renderKm(`<div class="verdict ${ok ? 'ok' : 'err'}">${escapeHtml(msg)}</div>${stepTable(steps)}`);
+    return ok;
+  }
+
+  /* ---------- send + listen ---------- */
+
+  async function sendAndListen() {
+    let bytes;
+    try { bytes = parseHex($('rawHex').value); } catch (e) { log('bad hex: ' + e.message, 'err'); return; }
+    if (!bytes || !bytes.length) { log('nothing to send', 'warn'); return; }
+
+    startInputCapture();
+    try { await sendChunked(bytes); } catch (e) { log('send failed: ' + e.message, 'err'); }
+
+    for (let i = 0; i < 3; i++) {
+      await sleep(350);
+      const r = await tryFeatureRead(600);
+      if (r.ok) log(`FEATURE read ${r.bytes.length} bytes: ${hex(r.bytes)}`, 'ok');
+      else log(`feature read: ${r.reason}`, 'dim');
+    }
+    await sleep(500);
+    stopInputCapture();
+    if (!inputReports.length) log('no input reports observed', 'dim');
+  }
+
+  /* ---------- wiring ---------- */
+
+  $('btnConnect').addEventListener('click', connect);
+  $('btnDisconnect').addEventListener('click', disconnect);
+  $('btnDiagnose').addEventListener('click', () => diagnose().catch(e => log('diagnose crashed: ' + e.message, 'err')));
+  $('btnSend').addEventListener('click', async () => {
+    let bytes;
+    try { bytes = parseHex($('rawHex').value); } catch (e) { log('bad hex: ' + e.message, 'err'); return; }
+    if (!bytes || !bytes.length) return;
+    try { await sendChunked(bytes); } catch (e) { log('send failed: ' + e.message, 'err'); }
+  });
+  $('btnProbe').addEventListener('click', () => sendAndListen().catch(e => log('probe crashed: ' + e.message, 'err')));
+  $('btnDeep').addEventListener('click', () => deepProbe().catch(e => log('deep probe crashed: ' + e.message, 'err')));
+  $('btnMailbox').addEventListener('click', () => mailboxProbe().catch(e => log('mailbox test crashed: ' + e.message, 'err')));
+  $('btnKmPreview').addEventListener('click', () => kmPreview().catch(e => log('preview crashed: ' + e.message, 'err')));
+  $('btnKmProbe').addEventListener('click', () => kmProbe().catch(e => log('probe crashed: ' + e.message, 'err')));
+  $('btnKmUpload').addEventListener('click', () => kmUpload().catch(e => log('upload crashed: ' + e.message, 'err')));
+  $('btnKmRemapTest').addEventListener('click', () => kmRemapTest().catch(e => log('remap test crashed: ' + e.message, 'err')));
+  $('btnKmRestore').addEventListener('click', () => {
+    if (!kmState.length) { log('key map not initialised — reload the page', 'err'); return; }
+    for (const k of kmState) { k.usage = k.factory; k.media = k.factoryMedia; }
+    kmMirror();
+    renderBoard();
+    renderInspector();
+    renderDirty();
+    log(kmLayer === 1 ? '──── clear all Fn overrides ────' : '──── restore factory map ────', 'info');
+    kmUpload().catch(e => log('restore crashed: ' + e.message, 'err'));
+  });
+  $('btnLayerTop').addEventListener('click', () => kmSetLayer(0));
+  $('btnLayerFn').addEventListener('click', () => kmSetLayer(1));
+  $('btnKmLoad').addEventListener('click', () => {
+    if (kmApplyText()) log('map text loaded into the editor — press "Upload changes" to apply it', 'ok');
+    else log('no valid lines in the map text', 'warn');
+  });
+  $('btnKmResetKey').addEventListener('click', () => {
+    const k = kmSelected();
+    if (!k) return;
+    kmSetUsage(k.factory, k.factoryMedia);
+  });
+  $('kmUsage').addEventListener('change', () => {
+    const v = $('kmUsage').value;
+    if (v === '') return;
+    const ok = /^c:/i.test(v)
+      ? kmSetUsage(parseInt(v.slice(2).replace(/^0x/i, ''), 16), true)
+      : kmSetUsage(parseInt(v, 10), false);
+    if (!ok) renderInspector();
+  });
+  $('kmRaw').addEventListener('change', () => {
+    let raw = $('kmRaw').value.trim();
+    const media = /^c:/i.test(raw);
+    if (media) raw = raw.slice(2);
+    const u = parseInt(raw.replace(/^0x/i, ''), 16);
+    if (!Number.isFinite(u)) { log(`"${$('kmRaw').value}" is not a hex usage`, 'warn'); renderInspector(); return; }
+    if (!kmSetUsage(u, media)) renderInspector();
+  });
+  $('btnClear').addEventListener('click', () => { logEl.textContent = ''; });
+  $('btnCopy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(logEl.textContent); log('log copied to clipboard', 'ok'); }
+    catch (e) { log('copy failed: ' + e.message, 'warn'); }
+  });
+
+  // reconnect silently to an already-authorised device
+  navigator.hid?.getDevices?.().then(list => {
+    if (list.length) log(`${list.length} previously authorised device(s) — click Connect to re-open.`, 'dim');
+  }).catch(() => {});
+
+  log('ready. Click "Connect keyboard".', 'dim');
+  kmInit();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+# Project text is UTF-8 with LF, on every platform.
+* text=auto eol=lf
+
+*.md            text eol=lf
+*.txt           text eol=lf
+*.html          text eol=lf
+*.js            text eol=lf
+*.json          text eol=lf
+*.cs            text eol=lf
+*.cmd           text eol=lf
+
+.editorconfig   text eol=lf
+.gitattributes  text eol=lf
+.gitignore      text eol=lf
+
+# Binaries, if any are ever added.
+*.exe   binary
+*.dll   binary
+*.png   binary
+*.ico   binary
