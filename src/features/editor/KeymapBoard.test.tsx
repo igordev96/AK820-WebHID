@@ -64,7 +64,16 @@ describe('KeymapBoard', () => {
 
     expect(screen.getByText('Fn layer, 81 keys')).toBeInTheDocument();
     expect(screen.getByText('Changed')).toBeInTheDocument();
+    expect(screen.getByText('Selected')).toBeInTheDocument();
     expect(screen.getByText('Pending upload')).toBeInTheDocument();
     expect(screen.getByText(`Firmware-owned: ${FN_LOCKED.size}`)).toBeInTheDocument();
+  });
+
+  it('keeps the untouched Fn key free of change markers', () => {
+    const { board } = renderBoard('top');
+    const fn = within(board).getByRole('button', { name: 'Fn' });
+
+    expect(fn).not.toHaveAttribute('data-changed');
+    expect(fn).not.toHaveAttribute('data-pending');
   });
 });

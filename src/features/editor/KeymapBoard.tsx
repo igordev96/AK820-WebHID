@@ -88,6 +88,8 @@ export function KeymapBoard({ rows, layer, selected, disabled, onSelect }: Keyma
                     type="button"
                     aria-label={row.name}
                     aria-pressed={isSelected}
+                    data-changed={custom ? 'true' : undefined}
+                    data-pending={pending ? 'true' : undefined}
                     disabled={locked || disabled}
                     title={title}
                     className={cn(
@@ -100,11 +102,7 @@ export function KeymapBoard({ rows, layer, selected, disabled, onSelect }: Keyma
                             'hover:border-brass/60 hover:text-brass-bright',
                           ),
                       !locked && custom && 'border-brass/45 text-brass',
-                      !locked && pending && 'border-brass/70',
-                      isSelected &&
-                        !locked &&
-                        'border-brass bg-brass/10 text-brass-bright ring-1 ring-brass/40',
-                      row.name === 'Fn' && !locked && !isSelected && 'border-brass/40 text-brass',
+                      isSelected && !locked && 'border-ivory/80 bg-surface-2',
                     )}
                     style={{
                       left: row.x,
@@ -114,6 +112,12 @@ export function KeymapBoard({ rows, layer, selected, disabled, onSelect }: Keyma
                     }}
                     onClick={() => onSelect(row.idx)}
                   >
+                    {pending && !locked ? (
+                      <span
+                        aria-hidden="true"
+                        className="absolute right-[3px] top-[3px] size-[5px] rounded-full bg-brass"
+                      />
+                    ) : null}
                     <span
                       className={cn(
                         'whitespace-nowrap',
@@ -138,13 +142,25 @@ export function KeymapBoard({ rows, layer, selected, disabled, onSelect }: Keyma
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-line/60 px-1 pt-2 text-[10px] text-muted">
         <span className="flex items-center gap-1.5">
           <span
-            className="size-2.5 rounded-[2px] border border-brass/50 bg-brass/10"
+            className="size-2.5 rounded-[2px] border border-brass/60 bg-brass/30"
             aria-hidden="true"
           />
           Changed
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="size-2.5 rounded-[2px] ring-1 ring-brass/60" aria-hidden="true" />
+          <span
+            className="size-2.5 rounded-[2px] border border-ivory/70 bg-surface-2"
+            aria-hidden="true"
+          />
+          Selected
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span
+            className="relative size-2.5 rounded-[2px] border border-line bg-keycap"
+            aria-hidden="true"
+          >
+            <span className="absolute right-0 top-0 size-1 rounded-full bg-brass" />
+          </span>
           Pending upload
         </span>
         {layer === 'fn' ? (
