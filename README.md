@@ -1,5 +1,7 @@
 # AK820 Pro WebHID key remapper
 
+![AK820 WebHID cover: a rendered keyboard beside the title and a Zero drivers badge](docs/assets/ak820-webhid-cover.jpg)
+
 An unofficial browser tool for remapping the AJAZZ AK820 Pro. It talks to the keyboard's
 configuration interface over WebHID, so there is nothing to install and no admin rights to ask
 for. It runs in Chrome, Edge or Opera on desktop.
