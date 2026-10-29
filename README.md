@@ -1,5 +1,10 @@
 # AK820 Pro WebHID key remapper
 
+[![CI](https://github.com/igordev96/AK820-WebHID/actions/workflows/ci.yml/badge.svg)](https://github.com/igordev96/AK820-WebHID/actions/workflows/ci.yml)
+[![Netlify deploy status](https://api.netlify.com/api/v1/badges/453ffc69-2e90-4f4b-a2c5-5d7e4616ca22/deploy-status)](https://app.netlify.com/sites/ak820-webhid/deploys)
+[![version](https://img.shields.io/github/package-json/v/igordev96/AK820-WebHID?color=d3a64c&label=version)](https://github.com/igordev96/AK820-WebHID/releases)
+[![license](https://img.shields.io/github/license/igordev96/AK820-WebHID?color=d3a64c)](LICENSE)
+
 ![AK820 WebHID cover: a rendered keyboard beside the title and a Zero drivers badge](docs/assets/ak820-webhid-cover.jpg)
 
 An unofficial browser tool for remapping the AJAZZ AK820 Pro. It talks to the keyboard's
@@ -136,6 +141,9 @@ npm run verify
 `npm run verify` runs the typecheck, the linter, the format check, the Vitest suite and the
 production build. All five must pass before a commit.
 
+GitHub Actions runs the same command on every push to `main` and every pull request. The workflow
+is `.github/workflows/ci.yml`.
+
 `src/lib/keymap` and `src/lib/hid` import no React. Components live in `src/features` and call
 those modules or the editor state. HID tests use a fake device, so the suite runs without a
 keyboard. [docs/04-code-map.md](docs/04-code-map.md) maps the modules and the tests.
@@ -145,7 +153,8 @@ keyboard. [docs/04-code-map.md](docs/04-code-map.md) maps the modules and the te
 `netlify.toml` runs `npm run build` on Node 24 and publishes `dist/`. There are no redirects or
 server functions. WebHID permission belongs to the origin, so the localhost and deployed origins
 keep separate device permissions. The public site is <https://ak820-webhid.netlify.app/>, deployed
-from `main`.
+from `main`. Netlify builds each push to `main`; the deploy badge in the README reports the latest
+build.
 
 ## Documentation
 

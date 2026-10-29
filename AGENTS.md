@@ -25,7 +25,8 @@ the tests in `src/`.
 
 Vite, React, TypeScript, Tailwind v4, shadcn/ui primitives, lucide-react and self-hosted IBM Plex
 through Fontsource. Netlify runs `npm run build` and publishes `dist/`. `dist/` is never committed.
-The page makes no analytics, telemetry or external asset requests.
+The page makes no analytics, telemetry or external asset requests. GitHub Actions runs
+`npm run verify` on `main` and pull requests (`.github/workflows/ci.yml`).
 
 ## Ask before acting
 
@@ -140,8 +141,8 @@ command card and the responsive board are wired, and Test 9 passed on the board.
 Hardware Test 9 passed on 29 Oct 2026. `v2.0.0` is tagged.
 
 The v1 `serve.js`, `start.cmd` and `tools/` JavaScript harnesses are gone; their last copy is in
-the `v1.0.1` tag. The npm scripts are the only check path. The root `index.html` is the Vite entry,
-not the old product.
+the `v1.0.1` tag. The npm scripts are the check path, and CI runs them. The root `index.html` is
+the Vite entry, not the old product.
 
 Keep the protocol behaviour identical through the refactor. Do not mix feature work into this
 branch.

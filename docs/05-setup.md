@@ -50,6 +50,10 @@ That runs all five steps in order:
 `npm run format` applies the formatter. Tests do not need a keyboard: `src/test/hidFakes.ts`
 provides a fake clock, a fake transport, and the app tests install a fake `navigator.hid`.
 
+GitHub Actions runs the same `npm run verify` on every push to `main` and every pull request. The
+workflow is `.github/workflows/ci.yml`. Netlify builds `main` after the push, and its deploy status
+badge is in the README.
+
 The build fails on a type error because `build` runs `tsc --noEmit` before Vite.
 
 ## 4. Deployment
