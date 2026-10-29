@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import type { Layer } from '@/lib/editor';
+import { cn } from '@/lib/utils';
 
 type PendingBarProps = {
   layer: Layer;
@@ -26,11 +27,16 @@ export function PendingBar({
 }: PendingBarProps) {
   const canWrite = connected && !busy;
   const restoreLabel = layer === 'fn' ? 'Clear all Fn overrides' : 'Restore factory map';
+  const status = !connected
+    ? 'Connect the keyboard to upload.'
+    : pendingCount
+      ? `${pendingCount} change${pendingCount === 1 ? '' : 's'} ready`
+      : 'No pending changes';
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="space-y-2.5">
       {confirming ? (
-        <div className="rounded-control border border-brass/30 bg-brass/5 p-3">
+        <div className="rounded-panel border border-brass/30 bg-brass/5 p-3">
           <p className="text-sm text-ivory">
             {layer === 'fn'
               ? 'Clear every Fn override? Each key returns to the firmware default.'
@@ -47,27 +53,29 @@ export function PendingBar({
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        {confirming ? null : (
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={!canWrite}
-            className="self-start sm:self-auto"
-            onClick={onRestore}
-          >
-            {restoreLabel}
-          </Button>
+      <div
+        className={cn(
+          'flex flex-col gap-3 rounded-panel border bg-surface/60 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between',
+          pendingCount ? 'border-brass/40' : 'border-line',
         )}
+      >
+        <span className="flex items-center gap-2 text-xs text-muted">
+          <span
+            aria-hidden="true"
+            className={cn(
+              'size-1.5 rounded-full',
+              !connected ? 'bg-muted/60' : pendingCount ? 'bg-brass' : 'bg-sage',
+            )}
+          />
+          {status}
+        </span>
 
-        <div className="flex items-center justify-between gap-3 sm:ml-auto sm:justify-end">
-          <span className="text-xs text-muted">
-            {!connected
-              ? 'Connect the keyboard to upload.'
-              : pendingCount
-                ? `${pendingCount} change${pendingCount === 1 ? '' : 's'} ready`
-                : 'No pending changes'}
-          </span>
+        <div className="flex flex-wrap items-center gap-2">
+          {confirming ? null : (
+            <Button variant="ghost" size="sm" disabled={!canWrite} onClick={onRestore}>
+              {restoreLabel}
+            </Button>
+          )}
           <Button disabled={!canWrite || pendingCount === 0} onClick={onUpload}>
             {busy
               ? 'Uploading…'

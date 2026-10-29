@@ -3,6 +3,7 @@ import { usageToken } from '@/lib/editor';
 import type { EditorRow, Layer } from '@/lib/editor';
 import { MEDIA_NAMES, USAGE_GROUPS, USAGE_NAMES, parseUsageToken, usageLabel } from '@/lib/keymap';
 import { cn } from '@/lib/utils';
+import { isSymbolLabel, keycapLabel } from './keyLabels';
 
 type OptionGroup = {
   label: string;
@@ -53,6 +54,23 @@ type KeyInspectorProps = {
   onInvalid: (message: string) => void;
 };
 
+function Specimen({ label, muted }: { label: string; muted?: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        'flex size-14 shrink-0 flex-col items-center justify-center rounded-key border text-sm font-medium',
+        muted
+          ? 'border-dashed border-line/80 bg-ink/40 text-muted/40'
+          : 'border-line bg-keycap text-ivory shadow-[inset_0_-3px_0_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.06)]',
+        !muted && isSymbolLabel(label) && 'font-mono text-[13px]',
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
 export function KeyInspector({
   row,
   layer,
@@ -66,10 +84,18 @@ export function KeyInspector({
 
   if (!row) {
     return (
-      <aside className="h-fit rounded-panel border border-line bg-surface p-4 lg:sticky lg:top-4">
-        <p className="text-xs text-muted">Inspector</p>
-        <p className="mt-3 text-sm font-medium">No key selected</p>
-        <p className="mt-1 text-sm text-muted">Select a key on the board to edit it.</p>
+      <aside className="h-fit rounded-panel border border-line bg-surface p-4">
+        <div className="flex items-center gap-3">
+          <Specimen label="—" muted />
+          <div>
+            <p className="text-sm font-medium">No key selected</p>
+            <p className="mt-1 text-xs text-muted">Select a key on the board to edit it.</p>
+          </div>
+        </div>
+        <p className="mt-4 border-t border-line/60 pt-3 text-[11px] leading-relaxed text-muted">
+          Keys that differ from the factory table are marked in brass. Nothing reaches the keyboard
+          until you upload.
+        </p>
       </aside>
     );
   }
@@ -82,17 +108,12 @@ export function KeyInspector({
   const isDefault = layer === 'fn' && token === '0x00';
   const custom = !knownToken && !isDefault;
 
-  const meta =
+  const detail =
     layer === 'fn'
-      ? `Key ${row.idx}. ${
-          row.usage
-            ? `Override: ${usageLabel(row.usage, row.media)}.`
-            : 'No override; firmware default.'
-        }`
-      : `Key ${row.idx}, record at offset ${row.idx * 4}. Factory: ${usageLabel(
-          row.factory,
-          row.factoryMedia,
-        )}.`;
+      ? row.usage
+        ? `Override: ${usageLabel(row.usage, row.media)}`
+        : 'Firmware default'
+      : `Factory default: ${usageLabel(row.factory, row.factoryMedia)}`;
 
   const commitRaw = (input: HTMLInputElement) => {
     const parsed = parseUsageToken(input.value);
@@ -106,12 +127,43 @@ export function KeyInspector({
   };
 
   return (
-    <aside className="h-fit rounded-panel border border-line bg-surface p-4 lg:sticky lg:top-4">
-      <p className="text-xs text-muted">Inspector</p>
-      <p className="mt-3 text-sm font-medium">{layer === 'fn' ? `Fn + ${row.name}` : row.name}</p>
-      <p className="mt-1 text-xs text-muted">{meta}</p>
+    <aside className="h-fit rounded-panel border border-line bg-surface p-4">
+      <div className="flex items-start gap-3">
+        <Specimen label={keycapLabel(row.name)} />
+        <div className="min-w-0">
+          <p className="text-[11px] text-muted">
+            {layer === 'fn' ? 'Fn layer' : 'Top layer'}, key {row.idx}
+          </p>
+          <p className="mt-0.5 truncate text-sm font-semibold">
+            {layer === 'fn' ? `Fn + ${row.name}` : row.name}
+          </p>
+          <p className="mt-0.5 text-[11px] text-muted">{detail}</p>
+        </div>
+      </div>
 
-      <div className="mt-5 space-y-1.5">
+      <div className="mt-4 flex items-center justify-between gap-2 border-t border-line/60 pt-3">
+        <span
+          role="status"
+          className={cn(
+            'flex items-center gap-1.5 text-[11px]',
+            pending ? 'text-brass' : 'text-muted',
+          )}
+        >
+          <span
+            aria-hidden="true"
+            className={cn(
+              'size-1.5 rounded-full',
+              locked ? 'bg-muted/60' : pending ? 'bg-brass' : 'bg-sage',
+            )}
+          />
+          {locked ? 'Firmware-owned' : pending ? 'Change pending' : 'Matches the keyboard'}
+        </span>
+        <Button variant="ghost" size="sm" disabled={controlsDisabled} onClick={onReset}>
+          {layer === 'fn' ? 'Back to firmware default' : 'Reset this key'}
+        </Button>
+      </div>
+
+      <div className="mt-4 space-y-1.5">
         <label htmlFor="key-usage" className="block text-xs text-muted">
           Sends
         </label>
@@ -148,9 +200,12 @@ export function KeyInspector({
       </div>
 
       <div className="mt-4 space-y-1.5">
-        <label htmlFor="key-raw" className="block text-xs text-muted">
-          Raw usage
-        </label>
+        <div className="flex items-baseline justify-between gap-2">
+          <label htmlFor="key-raw" className="block text-xs text-muted">
+            Raw usage
+          </label>
+          <span className="font-mono text-[10px] text-muted/70">offset {row.idx * 4}</span>
+        </div>
         <input
           id="key-raw"
           key={token}
@@ -165,22 +220,13 @@ export function KeyInspector({
         />
       </div>
 
-      <div className="mt-5 flex items-center justify-between gap-2">
-        <span role="status" className={cn('text-xs', pending ? 'text-brass' : 'text-muted')}>
-          {locked ? 'Firmware-owned' : pending ? 'Change pending' : 'Matches the keyboard'}
-        </span>
-        <Button variant="ghost" size="sm" disabled={controlsDisabled} onClick={onReset}>
-          {layer === 'fn' ? 'Back to firmware default' : 'Reset this key'}
-        </Button>
-      </div>
-
       {locked ? (
-        <p className="mt-3 text-[11px] leading-relaxed text-muted">
+        <p className="mt-4 border-t border-line/60 pt-3 text-[11px] leading-relaxed text-muted">
           The vendor layout marks this key fnlayer_disable. The firmware owns that Fn combination,
           so it has no slot here.
         </p>
       ) : (
-        <p className="mt-3 text-[11px] leading-relaxed text-muted">
+        <p className="mt-4 border-t border-line/60 pt-3 text-[11px] leading-relaxed text-muted">
           Keyboard usages use 0x00 to 0xFF. Media usages use c:0xE2, c:0xE9 and so on, because 0xE2
           alone is Left Alt.
         </p>

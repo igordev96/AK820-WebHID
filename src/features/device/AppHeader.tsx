@@ -44,7 +44,7 @@ export function AppHeader({
     'size-1.5 rounded-full',
     connected && device.configFound && 'bg-sage',
     connected && !device.configFound && 'bg-rust',
-    device.status === 'connecting' && 'animate-pulse bg-brass',
+    device.status === 'connecting' && 'animate-pulse bg-brass motion-reduce:animate-none',
     device.status === 'error' && 'bg-rust',
     device.status === 'idle' && 'bg-muted',
   );
@@ -64,11 +64,11 @@ export function AppHeader({
 
         <div className="flex min-w-0 items-center gap-2">
           <span
-            className="mr-1 hidden items-center gap-2 text-xs text-muted sm:flex"
+            className="mr-1 hidden items-center gap-2 rounded-full border border-line/70 bg-surface/60 px-2.5 py-1 text-xs text-muted sm:flex"
             aria-live="polite"
           >
             <span className={dot} aria-hidden="true" />
-            <span className="max-w-40 truncate">{label}</span>
+            <span className="max-w-40 truncate text-ivory/90">{label}</span>
             {connected && device.vendorId !== null && device.productId !== null ? (
               <span className="font-mono text-[10px] text-muted/70">
                 {hex(device.vendorId)}:{hex(device.productId)}

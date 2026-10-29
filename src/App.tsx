@@ -6,6 +6,7 @@ import { KeyInspector } from '@/features/editor/KeyInspector';
 import { KeymapBoard } from '@/features/editor/KeymapBoard';
 import { LayerTabs } from '@/features/editor/LayerTabs';
 import { PendingBar } from '@/features/editor/PendingBar';
+import { WriteRules } from '@/features/editor/WriteRules';
 import { LogPanel } from '@/features/log/LogPanel';
 import { useLog } from '@/features/log/useLog';
 import { realClock } from '@/lib/clock';
@@ -229,7 +230,7 @@ export function App() {
         </div>
       ) : null}
 
-      <main className="mx-auto grid w-full max-w-[1280px] flex-1 content-start gap-4 px-4 py-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <main className="mx-auto grid w-full max-w-[1320px] flex-1 content-start gap-5 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section className="flex min-w-0 flex-col gap-4">
           <LayerTabs layer={state.layer} disabled={busy} onChange={handleLayer} />
           <KeymapBoard
@@ -252,15 +253,18 @@ export function App() {
           />
         </section>
 
-        <KeyInspector
-          row={selectedRow}
-          layer={state.layer}
-          locked={locked}
-          disabled={busy}
-          onUsage={handleUsage}
-          onReset={handleReset}
-          onInvalid={(message) => log(message, 'warn')}
-        />
+        <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
+          <KeyInspector
+            row={selectedRow}
+            layer={state.layer}
+            locked={locked}
+            disabled={busy}
+            onUsage={handleUsage}
+            onReset={handleReset}
+            onInvalid={(message) => log(message, 'warn')}
+          />
+          <WriteRules />
+        </div>
       </main>
 
       <LogPanel

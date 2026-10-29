@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { createInitialState } from '@/lib/editor';
+import { FN_LOCKED } from '@/lib/keymap';
 import { KeymapBoard } from './KeymapBoard';
 
 const renderBoard = (layer: 'top' | 'fn' = 'top', selected: number | null = null) => {
@@ -56,5 +57,14 @@ describe('KeymapBoard', () => {
         .getAllByRole('button')
         .every((button) => button.hasAttribute('disabled')),
     ).toBe(true);
+  });
+
+  it('reads out the layer, key count and legend', () => {
+    renderBoard('fn');
+
+    expect(screen.getByText('Fn layer, 81 keys')).toBeInTheDocument();
+    expect(screen.getByText('Changed')).toBeInTheDocument();
+    expect(screen.getByText('Pending upload')).toBeInTheDocument();
+    expect(screen.getByText(`Firmware-owned: ${FN_LOCKED.size}`)).toBeInTheDocument();
   });
 });

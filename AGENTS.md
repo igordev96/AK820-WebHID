@@ -134,8 +134,8 @@ React editor and the advanced drawer are ported. Connection, editing, upload, re
 drawer, diagnostics, the deep probe, the mailbox probe, the raw command card and the responsive
 board are wired against the fake device.
 
-Next is the visual polish pass, then the v1 docs rewrite and hardware Test 9. No hardware has
-confirmed the React build yet.
+The visual pass is done. Next is the v1 docs rewrite, the Netlify check, hardware Test 9 and the
+`v2.0.0` tag. No hardware has confirmed the React build yet.
 
 The v1 files `index.html` (old product), `serve.js`, `start.cmd`, `tools/check-js.js`,
 `tools/kmtest.js` and `tools/editortest2.js` are legacy. Do not use them as the test path. They
