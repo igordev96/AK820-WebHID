@@ -218,6 +218,9 @@ All five must pass before a commit.
     no end command. It never touches the key table, and it is never written on connect.
 12. **Screen pixels use their own interface.** The 4096-byte output reports go to the `0xFF68`
     device; the `0xFF13` feature transport only carries begin, announce and commit.
+13. **The animation block count is 16 bits.** `announce[8]` is the low byte and `announce[9]` the
+    high byte. Truncating it makes the firmware expect a shorter upload, accept the frames anyway
+    and reject the commit, which leaves a mix of old and new frames on the screen.
 
 ## 9. Common changes
 

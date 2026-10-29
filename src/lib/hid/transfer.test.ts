@@ -281,6 +281,7 @@ describe('TransferService screen', () => {
     expect(announce[1]).toBe(0x72);
     expect(announce[2]).toBe(3);
     expect(announce[8]).toBe(9);
+    expect(announce[9]).toBe(0);
 
     expect(output?.sent).toHaveLength(9);
     expect(bytes(output?.sent[0] ?? new Uint8Array())).toEqual(
@@ -323,6 +324,18 @@ describe('TransferService screen', () => {
 
     await expect(service.sendAnimation(new Uint8Array(100))).rejects.toThrow(/4096/);
     await expect(service.sendAnimation(new Uint8Array(0))).rejects.toThrow(/4096/);
+  });
+
+  it('writes the block count as a 16-bit value', async () => {
+    const { service, transport, output } = makeService(screenReplies(), true);
+    const big = new Uint8Array(256 * SCREEN_BLOCK_SIZE);
+
+    await service.sendAnimation(big);
+
+    const announce = transport.sent[1] ?? new Uint8Array();
+    expect(announce[8]).toBe(0);
+    expect(announce[9]).toBe(1);
+    expect(output?.sent).toHaveLength(256);
   });
 
   it('stops before the first block when the signal is already aborted', async () => {

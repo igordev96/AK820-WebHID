@@ -23,8 +23,8 @@ the transfer sequence and the wire bytes are unchanged. The new build has passed
 fake device, and hardware Test 9 passed on 29 Oct 2026: top layer, Fn media override, both restore
 actions and the upload lock were checked on the board. The screen clock was added the same day and
 confirmed on the board in Test 10, for both this computer's time and a time picked by hand. Test 11
-added the screen data channel with one 128 × 128 picture, and Test 12 played a 31-frame GIF the user
-chose. Both were confirmed on the screen.
+added the screen data channel with one 128 × 128 picture, Test 12 played a 31-frame GIF, and Test 13
+played a 60-frame GIF after the 16-bit block count was fixed.
 [docs/02-hardware-tests.md](docs/02-hardware-tests.md) records the evidence.
 
 ## What it does

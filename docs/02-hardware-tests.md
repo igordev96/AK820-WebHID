@@ -398,3 +398,25 @@ minutes.
 The page plays a multi-frame GIF of arbitrary length up to the vendor's 140-frame limit. Frame
 delays come from the GIF and are clamped to 30-500 ms. Cancel was not exercised on the board; the
 abort path is covered by unit tests only.
+
+## Test 13 — 60 frames and the 16-bit count (29 Oct 2026)
+
+Build: the working tree that fixed the announce, dev server on `http://localhost:5173`, Chrome on
+Windows. The user sent the same 60-frame GIF that had failed before.
+
+```
+begin 04 18                   status 0x01
+announce 04 72 03 … E1 01     status 0x01; 0x01E1 = 481 blocks
+481 x 4096-byte reports       on 0xFF68
+commit 04 02                  status 0x01
+```
+
+The log reported `SENT 481 x 4096-byte blocks (1970176 bytes) in 108719 ms` and `Screen animation
+sent (60 frames)`. The user confirmed the screen played the GIF.
+
+The earlier run with the same file wrote only the low byte, `E1` = 225 blocks. The firmware accepted
+all the data, rejected the commit with `0xFF`, and left a mix of the new 60 frames, the previous
+31-frame GIF and the still older colour test on the screen. The vendor capture of the 132-frame
+stock animation showed the count is two bytes, `21 04` = 1057, and the page now writes both.
+
+Timing: about 226 ms per block, so 30 frames is around 55 seconds and 140 frames about four minutes.

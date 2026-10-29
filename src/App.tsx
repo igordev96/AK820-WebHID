@@ -323,12 +323,13 @@ export function App() {
 
         setAnimationStatus({
           kind: 'err',
-          message: 'The keyboard refused the animation. The old one should still be on screen.',
+          message:
+            'The keyboard refused the commit. The screen may show a mix of the old and new animation; send another one to replace it.',
         });
         log(
           `Screen animation rejected (${
             status === null ? 'no reply' : `0x${hex([status])}`
-          }). The old one should still be live.`,
+          }). The screen may hold a mix of old and new frames.`,
           'err',
         );
       } catch (error) {

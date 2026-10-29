@@ -148,6 +148,11 @@ export class TransferService {
       throw new Error('the screen data channel is not available');
     }
 
+    const blocks = payload.length / SCREEN_BLOCK_SIZE;
+    if (blocks > 0xffff) {
+      throw new Error('the announce cannot carry more than 65535 blocks');
+    }
+
     if (this.busy) {
       this.log('a transfer is already running — ignoring this request', 'warn');
       return { steps: [], busy: true };
@@ -190,7 +195,8 @@ export class TransferService {
     const announce = padFrame(
       Uint8Array.from([...COMMANDS.animation, SCREEN_MODE_ANIMATION, 0, 0, 0, 0, 0]),
     );
-    announce[8] = blocks;
+    announce[8] = blocks & 0xff;
+    announce[9] = (blocks >> 8) & 0xff;
     this.log(`SEND  ${hex(announce)}`, 'info');
     await this.transport.send(announce);
 

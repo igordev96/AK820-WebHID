@@ -316,12 +316,20 @@ still use `0xFF13`.
 
 ```
 04 18                                  begin (feature)
-04 72 03 00 00 00 00 00 <blocks>       announce; mode 3, then the block count
+04 72 03 00 00 00 00 00 <lo> <hi>      announce; block count is 16-bit LE at bytes 8-9
 <blocks> x 4096-byte output reports    on 0xFF68, about 153 ms apart
 04 02                                  commit (feature)
 ```
 
 `blocks = frames x 8 + 1`. No `04 F0` follows the commit.
+
+The count is **two bytes**, little-endian: a 60-frame animation is 481 blocks, `E1 01`; the vendor's
+132-frame stock animation is 1057, `21 04`. Writing only the low byte makes the firmware expect a
+shorter upload, apply the frames anyway, and reject the commit, which leaves a mix of old and new
+frames on the screen.
+
+Byte 2 was `03` for imported GIFs and `04` for the stock animation. What it selects is unknown; the
+page sends `03`.
 
 The blocks concatenate into one buffer:
 
