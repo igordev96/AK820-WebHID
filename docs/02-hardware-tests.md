@@ -255,4 +255,28 @@ not appear in the log. The byte-level check is `src/lib/keymap/table.test.ts`.
 Conclusion: the React build writes the top layer and restores it. The full sequence, the commit
 gate and the rollback by re-upload behave as on v1.
 
-9B (Fn layer) and 9C (restore and the upload lock) are still to run.
+### 9B — Fn layer, slot 55 (Fn+CapsLock) to Media: Mute
+
+Change: key 55 on the Fn layer from zero to `03 E2 00 00`. Every other Fn slot stayed zero and the
+trailer stayed `AA 55`. This writes the Fn table with `04 27`, not the top layer.
+
+```
+begin 04 18: status 0x01 OK  (2 ms after settle, 1 read)
+announce 04 27: status 0x01 OK  (2 ms after settle, 1 read)
+chunk 1/9 ... chunk 9/9 ok in 1–2 ms
+SENT 9 x 64-byte chunks (576 bytes) in 119 ms
+commit 04 02: status 0x01 OK  (2 ms after settle, 1 read)
+end 04 F0: status 0x01 OK  (3 ms after settle, 1 read)
+Upload accepted. The Fn layer is live.
+```
+
+Behaviour: Fn+CapsLock showed the Windows mute OSD. Plain CapsLock still toggled caps. After a page
+reload and a new connect, the override was still listed on the Fn layer, which confirms the
+`localStorage` copy. The user cleared it with **Back to firmware default** and an upload; after
+that, Fn+CapsLock returned to its stock behaviour.
+
+Conclusion: the React build writes the Fn layer, the firmware accepts the consumer record on this
+build, and clearing the override restores the firmware combination. Persistence works across a
+reload.
+
+9C (restore actions and the upload lock) is still to run.

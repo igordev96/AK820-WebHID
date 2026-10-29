@@ -133,8 +133,8 @@ React editor, the advanced drawer, the visual pass and the v2 documentation are 
 Connection, editing, upload, restore, the log drawer, diagnostics, the deep probe, the mailbox
 probe, the raw command card and the responsive board are wired against the fake device.
 
-Hardware Test 9 is in progress: the top layer is confirmed on 29 Oct 2026, with the Fn and media
-checks still to run. Then the `v2.0.0` tag. Nothing else in the React build has been on the board.
+Hardware Test 9 is in progress: the top layer and the Fn media override are confirmed on 29 Oct
+2026; the restore buttons and the upload lock remain. Then the `v2.0.0` tag.
 
 The v1 `serve.js`, `start.cmd` and `tools/` JavaScript harnesses are gone; their last copy is in
 the `v1.0.1` tag. The npm scripts are the only check path. The root `index.html` is the Vite entry,
