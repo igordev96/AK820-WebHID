@@ -128,8 +128,9 @@ Never claim "works" from a `0x01` commit. Keep `docs/02-hardware-tests.md` factu
 ## Refactor state
 
 Phases 1 to 8 are complete. The repository is published at
-https://github.com/igordev96/AK820-WebHID, `main` holds the v2.0.0 release, and `refactor/react`
-points at the same commit. The Netlify site still needs to be connected to this repository.
+https://github.com/igordev96/AK820-WebHID and the site runs at
+https://ak820-webhid.netlify.app/. `main` holds the v2.0.0 release, and `refactor/react` points at
+the same commit.
 
 The toolchain, keymap, HID transport and transfer service, editor state/persistence, the React
 editor, the advanced drawer, the visual pass and the v2 documentation are in place. Connection,

@@ -4,6 +4,8 @@ An unofficial browser tool for remapping the AJAZZ AK820 Pro. It talks to the ke
 configuration interface over WebHID, so there is nothing to install and no admin rights to ask
 for. It runs in Chrome, Edge or Opera on desktop.
 
+A hosted copy runs at <https://ak820-webhid.netlify.app/>. It is the same build as this repository.
+
 AK820 Pro is a trademark of its owner. This project is not affiliated with AJAZZ. The tool writes
 the key table, so keep the vendor application available for recovery.
 
@@ -140,7 +142,8 @@ keyboard. [docs/04-code-map.md](docs/04-code-map.md) maps the modules and the te
 
 `netlify.toml` runs `npm run build` on Node 24 and publishes `dist/`. There are no redirects or
 server functions. WebHID permission belongs to the origin, so the localhost and deployed origins
-keep separate device permissions.
+keep separate device permissions. The public site is <https://ak820-webhid.netlify.app/>, deployed
+from `main`.
 
 ## Documentation
 

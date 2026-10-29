@@ -73,7 +73,8 @@ The response headers set `X-Content-Type-Options`, `Referrer-Policy` and
 localhost is not automatically allowed on the deployed site. Connect once on each origin.
 
 The Netlify deploy itself is not part of `npm run verify`. Check the production build locally with
-`npm run build` and `npm run preview` before merging to `main`.
+`npm run build` and `npm run preview` before merging to `main`. The public site is
+<https://ak820-webhid.netlify.app/>, deployed from `main`.
 
 ## 5. Before connecting
 
