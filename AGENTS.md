@@ -58,6 +58,16 @@ pass before a commit. Use `npm run format` to apply oxfmt.
 Tests use Vitest and React Testing Library. HID tests use a fake device, so they run without a
 keyboard. The production build runs `tsc --noEmit` first, so a type error fails the build.
 
+## Definition of done
+
+- `npm run verify` is green.
+- New library code has tests that run without a keyboard.
+- A hardware test is dated in `docs/02-hardware-tests.md` when the change reaches the board.
+- The pages the change invalidates move in the same commit: `01` for bytes, `02` for evidence,
+  `04` for modules and tests, `05` if setup changed, `06` for lessons.
+- UI work was looked at as a screenshot at a wide and a narrow width, not only in the test output.
+- Public prose has had the humanize pass.
+
 ## Architecture rules
 
 - `src/lib/keymap` and `src/lib/hid` are framework-free. They do not import React.
@@ -78,6 +88,35 @@ keyboard. The production build runs `tsc --noEmit` first, so a type error fails 
   user's confirmation in `docs/02-hardware-tests.md`.
 - WebHID needs HTTPS or localhost. The deployed Netlify origin and the local dev origin are
   separate permissions.
+
+## Protocol work
+
+Never guess a byte. The vendor app and its disassembly live in the private research repository, and
+`re/hooks/hid-log.js` records what the app sends through Frida. Decode from the capture, reproduce
+it in `src/lib`, and write the layout into `docs/01-protocol.md`. When the capture and the
+disassembly disagree, the capture wins.
+
+A new command needs three things before it ships: a packet test, a fake-transport test that proves
+the sequence, and a dated hardware test. The mailbox is not evidence; the user looking at the
+keyboard is.
+
+## Design work
+
+Load the `frontend-design` skill before reshaping the UI or adding a view. This project has a small
+visual language and has already paid for breaking it once: brass means "differs from factory", so
+it can never be decoration.
+
+- Spend boldness in one place. Here that is the keyboard board and the 128 × 128 screen panel;
+  everything around them stays quiet.
+- Reuse the tokens in `src/styles/globals.css`. Do not add a colour that carries no meaning, and do
+  not give one signal two meanings.
+- Copy names the outcome and stays consistent. The button that says **Send time** produces "Sent.
+  The screen clock is set to 20:41:07."
+- Before calling UI work done, screenshot it at a wide and a narrow width and look at it. The
+  layout usually needs one more pass after the first screenshot.
+- No new dependency for a control that can be built with what is already here. If a well-tested
+  library is clearly better, use it, and say which packages you added and why. Date and time
+  pickers are the example: `react-day-picker` and Radix Popover beat a hand-rolled calendar.
 
 ## Public text
 
