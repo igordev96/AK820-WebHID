@@ -142,31 +142,31 @@ export function KeymapBoard({ rows, layer, selected, disabled, onSelect }: Keyma
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-line/60 px-1 pt-2 text-[10px] text-muted">
         <span className="flex items-center gap-1.5">
           <span
-            className="size-2.5 rounded-[2px] border border-brass/60 bg-brass/30"
+            className="size-3 rounded-[3px] border border-brass/70 bg-brass/20 shadow-[inset_0_-1px_0_rgba(0,0,0,0.45)]"
             aria-hidden="true"
           />
           Changed
         </span>
         <span className="flex items-center gap-1.5">
           <span
-            className="size-2.5 rounded-[2px] border border-ivory/70 bg-surface-2"
+            className="size-3 rounded-[3px] border border-ivory/70 bg-keycap shadow-[inset_0_-1px_0_rgba(0,0,0,0.45)]"
             aria-hidden="true"
           />
           Selected
         </span>
         <span className="flex items-center gap-1.5">
           <span
-            className="relative size-2.5 rounded-[2px] border border-line bg-keycap"
+            className="relative size-3 rounded-[3px] border border-line bg-keycap shadow-[inset_0_-1px_0_rgba(0,0,0,0.45)]"
             aria-hidden="true"
           >
-            <span className="absolute right-0 top-0 size-1 rounded-full bg-brass" />
+            <span className="absolute right-[2px] top-[2px] size-1 rounded-full bg-brass" />
           </span>
           Pending upload
         </span>
         {layer === 'fn' ? (
           <span className="flex items-center gap-1.5">
             <span
-              className="size-2.5 rounded-[2px] border border-dashed border-line bg-surface/40"
+              className="size-3 rounded-[3px] border border-dashed border-line bg-surface/40"
               aria-hidden="true"
             />
             Firmware-owned: {FN_LOCKED.size}
