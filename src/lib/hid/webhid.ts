@@ -1,4 +1,4 @@
-import { findConfigCollection, type CollectionReport } from './collections';
+import { type CollectionReport, findConfigCollection, findScreenCollection } from './collections';
 import { CONFIG_USAGE, CONFIG_USAGE_PAGE, PRODUCT_IDS, VENDOR_ID } from './protocol';
 
 export type WebHidReportInfo = CollectionReport;
@@ -29,6 +29,7 @@ export type WebHidDevice = {
   close(): Promise<void>;
   sendFeatureReport(reportId: number, data: BufferSource): Promise<void>;
   receiveFeatureReport(reportId: number): Promise<DataView>;
+  sendReport?(reportId: number, data: BufferSource): Promise<void>;
   addEventListener(type: 'disconnect', listener: () => void): void;
   removeEventListener(type: 'disconnect', listener: () => void): void;
 };
@@ -61,6 +62,12 @@ export function pickDevice(devices: readonly WebHidDevice[]): WebHidDevice | nul
     devices.find((device) => findConfigCollection({ collections: device.collections })) ??
     devices[0] ??
     null
+  );
+}
+
+export function pickScreenDevice(devices: readonly WebHidDevice[]): WebHidDevice | null {
+  return (
+    devices.find((device) => findScreenCollection({ collections: device.collections })) ?? null
   );
 }
 

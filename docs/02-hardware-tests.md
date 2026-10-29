@@ -327,3 +327,47 @@ current time. Both changes were confirmed by the user at the keyboard.
 The screen accepts the clock packet this page builds, for both the browser's time and a time typed
 by hand. The clock is a settings write, not a key-table write: it uses its own announce command
 and leaves the top and Fn layers untouched. Whether the clock survives a power loss was not tested.
+
+## Test 11 — screen image (29 Oct 2026)
+
+Build: the working tree that added the image channel, dev server on `http://localhost:5173`,
+Chrome on Windows. Keyboard in USB mode, vendor app closed.
+
+### Connection
+
+`requestDevice` returned three interfaces for the one keyboard:
+
+```
+[0] 0x000C/0x0001  0xFFFF/0x0001
+[1] 0xFF68/0x0061
+[2] 0xFF13/0x0001
+```
+
+The page keeps `0xFF13` for commands and opens `0xFF68` for the 4096-byte output reports. Sending
+the output report on the `0xFF13` device fails with "Failed to write the report", which is what the
+first attempt did. The two interfaces are separate HID devices in Windows even though WebHID
+returns them together.
+
+### The write
+
+One 128 x 128 image, sent as a single frame:
+
+```
+begin 04 18            status 0x01
+announce 04 72 03 … 09  status 0x01, nine blocks
+9 x 4096-byte output reports   on 0xFF68, 1788 ms
+commit 04 02           status 0x01
+```
+
+The log reported `SENT 9 x 4096-byte blocks (36864 bytes) in 1788 ms` and `Screen image sent`.
+
+### Result
+
+The screen showed the chosen image. The user confirmed it at the keyboard. No key mapping or clock
+was touched.
+
+### Test 11 conclusion
+
+This page can write the screen data channel: the 0xFF68 interface, 4096-byte output reports, the
+same announce and commit as the vendor app. The image is one frame of the animation format, so the
+same path carries a multi-frame upload.

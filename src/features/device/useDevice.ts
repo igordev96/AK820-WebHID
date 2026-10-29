@@ -1,10 +1,15 @@
 import { useCallback, useState } from 'react';
-import { findConfigCollection } from '@/lib/hid/collections';
+import {
+  findConfigCollection,
+  findScreenCollection,
+  flattenCollections,
+} from '@/lib/hid/collections';
 import type { LogFn } from '@/lib/hid/transfer';
 import {
   buildWebHidFilters,
   getWebHid,
   pickDevice,
+  pickScreenDevice,
   type WebHid,
   type WebHidDevice,
 } from '@/lib/hid/webhid';
@@ -14,20 +19,24 @@ export type DeviceStatus = 'idle' | 'connecting' | 'connected' | 'error';
 export type DeviceState = {
   readonly status: DeviceStatus;
   readonly device: WebHidDevice | null;
+  readonly screenDevice: WebHidDevice | null;
   readonly name: string | null;
   readonly vendorId: number | null;
   readonly productId: number | null;
   readonly configFound: boolean;
+  readonly screenFound: boolean;
   readonly error: string | null;
 };
 
 const initialState: DeviceState = {
   status: 'idle',
   device: null,
+  screenDevice: null,
   name: null,
   vendorId: null,
   productId: null,
   configFound: false,
+  screenFound: false,
   error: null,
 };
 
@@ -52,6 +61,7 @@ export function useDevice({ hid, log }: { hid?: WebHid; log?: LogFn } = {}) {
     try {
       const devices = await available.requestDevice({ filters: buildWebHidFilters() });
       const device = pickDevice(devices);
+      const screenCandidate = pickScreenDevice(devices);
 
       if (!device) {
         setState(initialState);
@@ -59,7 +69,36 @@ export function useDevice({ hid, log }: { hid?: WebHid; log?: LogFn } = {}) {
         return;
       }
 
+      log?.(`interfaces returned: ${devices.length}`, 'dim');
+      for (const [index, item] of devices.entries()) {
+        const pages = flattenCollections(item.collections).map(
+          ({ collection }) => `0x${hex(collection.usagePage)}/0x${hex(collection.usage)}`,
+        );
+        log?.(`  [${index}] ${pages.join('  ') || 'no collections'}`, 'dim');
+      }
+
       await device.open();
+
+      let screenDevice: WebHidDevice | null = null;
+      let screenFound = false;
+      if (screenCandidate === device) {
+        screenDevice = device;
+        screenFound = Boolean(findScreenCollection({ collections: device.collections }));
+      } else if (screenCandidate) {
+        try {
+          await screenCandidate.open();
+          screenDevice = screenCandidate;
+          screenFound = true;
+        } catch (error) {
+          log?.(
+            `screen interface failed to open: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+            'warn',
+          );
+        }
+      }
+
       const configFound = Boolean(findConfigCollection({ collections: device.collections }));
 
       const handleDisconnect = () => {
@@ -67,14 +106,19 @@ export function useDevice({ hid, log }: { hid?: WebHid; log?: LogFn } = {}) {
         setState(initialState);
       };
       device.addEventListener('disconnect', handleDisconnect);
+      if (screenDevice && screenDevice !== device) {
+        screenDevice.addEventListener('disconnect', handleDisconnect);
+      }
 
       setState({
         status: 'connected',
         device,
+        screenDevice,
         name: device.productName ?? 'AK820',
         vendorId: device.vendorId,
         productId: device.productId,
         configFound,
+        screenFound,
         error: null,
       });
 
@@ -89,6 +133,9 @@ export function useDevice({ hid, log }: { hid?: WebHid; log?: LogFn } = {}) {
           'err',
         );
       }
+      if (!screenFound) {
+        log?.('screen interface 0xFF68/0x0061 not found. The image card stays disabled.', 'warn');
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setState({ ...initialState, status: 'error', error: message });
@@ -98,6 +145,7 @@ export function useDevice({ hid, log }: { hid?: WebHid; log?: LogFn } = {}) {
 
   const disconnect = useCallback(async () => {
     const device = state.device;
+    const screen = state.screenDevice;
     if (!device) return;
 
     try {
@@ -106,9 +154,20 @@ export function useDevice({ hid, log }: { hid?: WebHid; log?: LogFn } = {}) {
       log?.(`close failed: ${error instanceof Error ? error.message : String(error)}`, 'warn');
     }
 
+    if (screen && screen !== device) {
+      try {
+        await screen.close();
+      } catch (error) {
+        log?.(
+          `screen close failed: ${error instanceof Error ? error.message : String(error)}`,
+          'warn',
+        );
+      }
+    }
+
     setState(initialState);
     log?.('disconnected', 'dim');
-  }, [log, state.device]);
+  }, [log, state.device, state.screenDevice]);
 
   return {
     ...state,

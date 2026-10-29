@@ -1,4 +1,4 @@
-import { CONFIG_USAGE, CONFIG_USAGE_PAGE } from './protocol';
+import { CONFIG_USAGE, CONFIG_USAGE_PAGE, SCREEN_USAGE, SCREEN_USAGE_PAGE } from './protocol';
 
 export type CollectionReport = {
   readonly reportId: number;
@@ -39,6 +39,16 @@ export function findConfigCollection(device: {
   const match = flattenCollections(device.collections).find(
     ({ collection }) =>
       collection.usagePage === CONFIG_USAGE_PAGE && collection.usage === CONFIG_USAGE,
+  );
+  return match?.collection ?? null;
+}
+
+export function findScreenCollection(device: {
+  collections: readonly CollectionNode[];
+}): CollectionNode | null {
+  const match = flattenCollections(device.collections).find(
+    ({ collection }) =>
+      collection.usagePage === SCREEN_USAGE_PAGE && collection.usage === SCREEN_USAGE,
   );
   return match?.collection ?? null;
 }

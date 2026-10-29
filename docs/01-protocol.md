@@ -14,11 +14,15 @@ repository and is **not** part of this project.
 | PIDs accepted by the page | `0x8009` (tested), `0x800A`, `0xFDFD` |
 | Config collection | usage page **`0xFF13`**, usage **`0x0001`** |
 | Report | **feature**, 65 bytes on the wire (report id `0` + 64 data bytes) |
+| Screen collection | usage page **`0xFF68`**, usage **`0x0061`** |
+| Screen report | **output**, 4097 bytes on the wire (report id `0` + 4096 data bytes) |
 | Input reports | not used for configuration |
 
 The board exposes several HID collections (keyboard `0x0001/0x0006`, consumer, vendor
-`0xFFFF`, `0xFF13`, `0xFF68`). Chrome blocks the keyboard/consumer ones for WebHID; only
-`0xFF13` is needed. The knob and all normal keys keep working through their own collections.
+`0xFFFF`, `0xFF13`, `0xFF68`). Chrome blocks the keyboard/consumer ones for WebHID. The page needs
+`0xFF13` for commands and `0xFF68` for screen pixels. Windows exposes those as separate interfaces,
+and WebHID returns them as separate devices even though they belong to one keyboard. The knob and
+the normal keys keep working through their own collections.
 
 Requirements: Chromium **desktop** (Chrome, Edge, Opera) on Windows/macOS/Linux, page served
 over HTTPS or `http://localhost`. Bluetooth mode does not expose the config collection.
@@ -298,4 +302,49 @@ The example is 29 Oct 2026 at 20:40:26, a Thursday.
 - **Slot byte.** It was `01` in the capture. The vendor computes it from `GetCurSel + 1`, so it may
   pick a screen slot; what else it controls is unknown. The page always sends `1`.
 - **Power.** Whether the clock keeps running after the keyboard is unplugged was not tested.
+
+---
+
+## 10. The screen image and animation
+
+The screen is 128 × 128. A frame is raw **RGB565, 32768 bytes**, little-endian: red is `00 F8`,
+green `E0 07`, blue `1F 00`.
+
+Frame data does **not** go over the config collection. It goes to the second vendor interface,
+usage page `0xFF68`, usage `0x0061`, as **4096-byte output reports**. Begin, announce and commit
+still use `0xFF13`.
+
+```
+04 18                                  begin (feature)
+04 72 03 00 00 00 00 00 <blocks>       announce; mode 3, then the block count
+<blocks> x 4096-byte output reports    on 0xFF68, about 153 ms apart
+04 02                                  commit (feature)
+```
+
+`blocks = frames x 8 + 1`. No `04 F0` follows the commit.
+
+The blocks concatenate into one buffer:
+
+| Offset | Contents |
+|---|---|
+| 0 | frame count, 1 to 140 |
+| 1 … | one delay byte per frame, in 2 ms units |
+| 4 … 255 | `0xFF` padding |
+| 256 | frame 1, then each further frame, 32768 bytes |
+| tail | `0xFF` to `blocks x 4096` |
+
+The vendor app paces the blocks about 153 ms apart and reads no reply per block. A 140-frame
+animation is therefore around three minutes.
+
+On Windows the keyboard appears as several HID interfaces, and WebHID returns them as several
+devices. The page keeps `0xFF13` for the command path and `0xFF68` for the pixel path; sending a
+4096-byte output report on the `0xFF13` device fails.
+
+Still unknown:
+
+- what `mode 3` selects, and whether other modes exist;
+- whether the device reads the header or only the frames;
+- whether the trailing padding must be sent;
+- the behaviour with one frame, and what a cancelled upload leaves on the screen.
+
 

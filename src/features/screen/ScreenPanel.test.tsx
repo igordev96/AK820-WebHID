@@ -4,7 +4,18 @@ import { describe, expect, it, vi } from 'vitest';
 import { ScreenPanel } from './ScreenPanel';
 
 const renderPanel = (onSend = vi.fn()) =>
-  render(<ScreenPanel connected busy={false} status={{ kind: 'idle' }} onSend={onSend} />);
+  render(
+    <ScreenPanel
+      connected
+      screenReady
+      busy={false}
+      status={{ kind: 'idle' }}
+      imageStatus={{ kind: 'idle' }}
+      imageProgress={null}
+      onSend={onSend}
+      onSendImage={vi.fn()}
+    />,
+  );
 
 describe('ScreenPanel', () => {
   it('previews the local time and sends it', async () => {

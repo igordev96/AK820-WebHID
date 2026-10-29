@@ -11,6 +11,7 @@ import { WriteRules } from '@/features/editor/WriteRules';
 import { LogPanel } from '@/features/log/LogPanel';
 import { useLog } from '@/features/log/useLog';
 import { ScreenPanel } from '@/features/screen/ScreenPanel';
+import type { ImageStatus } from '@/features/screen/ImageCard';
 import type { TimeStatus } from '@/features/screen/ClockCard';
 import { realClock } from '@/lib/clock';
 import {
@@ -30,6 +31,7 @@ import {
 import { hex } from '@/lib/format';
 import { HidClient, STATUS, TransferService, formatClock, isTransportFailed } from '@/lib/hid';
 import { FN_LOCKED, buildTable } from '@/lib/keymap';
+import { buildAnimationPayload } from '@/lib/screen';
 import { cn } from '@/lib/utils';
 
 function loadInitialState(storage: StorageLike | null): EditorState {
@@ -61,11 +63,18 @@ export function App() {
   const [logOpen, setLogOpen] = useState(false);
   const [view, setView] = useState<View>('keys');
   const [timeStatus, setTimeStatus] = useState<TimeStatus>({ kind: 'idle' });
+  const [imageStatus, setImageStatus] = useState<ImageStatus>({ kind: 'idle' });
+  const [imageProgress, setImageProgress] = useState<{
+    readonly sent: number;
+    readonly total: number;
+  } | null>(null);
 
   const transfer = useMemo(() => {
     if (!device.device || !device.configFound) return null;
-    return new TransferService(new HidClient(device.device), realClock, log);
-  }, [device.device, device.configFound, log]);
+    const config = new HidClient(device.device);
+    const screen = device.screenDevice ? new HidClient(device.screenDevice) : null;
+    return new TransferService(config, realClock, log, screen ?? undefined);
+  }, [device.device, device.screenDevice, device.configFound, log]);
 
   const rows = getActiveRows(state);
   const selectedRow = getSelectedRow(state);
@@ -249,6 +258,71 @@ export function App() {
     [log, transfer],
   );
 
+  const handleSendImage = useCallback(
+    async (frame: Uint8Array) => {
+      if (!transfer) {
+        log('Connect the keyboard first.', 'warn');
+        return;
+      }
+      if (busyRef.current) return;
+
+      busyRef.current = true;
+      setBusy(true);
+      setImageStatus({ kind: 'idle' });
+      setImageProgress(null);
+
+      try {
+        const payload = buildAnimationPayload({ frames: [frame], delaysMs: [100] });
+        const result = await transfer.sendAnimation(payload, (sent, total) => {
+          setImageProgress({ sent, total });
+        });
+
+        if (result.busy) {
+          log('A transfer is already running.', 'warn');
+          return;
+        }
+
+        if (isTransportFailed(result.steps)) {
+          setImageStatus({
+            kind: 'err',
+            message: 'The upload stopped before the commit. The screen may show part of the image.',
+          });
+          log('The screen upload stopped early. The commit was not sent.', 'err');
+          return;
+        }
+
+        const commit = result.steps.find((step) => step.step === 'commit');
+        const status = commit?.reply.status ?? null;
+
+        if (status === STATUS.ok) {
+          setImageStatus({ kind: 'ok', message: 'Sent. The screen is showing the image.' });
+          log('Screen image sent. The image is live.', 'ok');
+          return;
+        }
+
+        setImageStatus({
+          kind: 'err',
+          message: 'The keyboard refused the image. The old animation should still be on screen.',
+        });
+        log(
+          `Screen image rejected (${
+            status === null ? 'no reply' : `0x${hex([status])}`
+          }). The old animation should still be live.`,
+          'err',
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setImageStatus({ kind: 'err', message: 'The image could not be sent. Nothing changed.' });
+        log(`Screen upload failed: ${message}`, 'err');
+      } finally {
+        busyRef.current = false;
+        setBusy(false);
+        setImageProgress(null);
+      }
+    },
+    [log, transfer],
+  );
+
   const handleOpenAdvanced = useCallback(() => {
     if (!connected || busyRef.current) return;
     setAdvancedOpen(true);
@@ -348,9 +422,13 @@ export function App() {
           ) : (
             <ScreenPanel
               connected={connected}
+              screenReady={device.screenFound}
               busy={busy}
               status={timeStatus}
+              imageStatus={imageStatus}
+              imageProgress={imageProgress}
               onSend={handleSendTime}
+              onSendImage={handleSendImage}
             />
           )}
         </div>

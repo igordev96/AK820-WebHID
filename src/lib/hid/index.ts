@@ -25,6 +25,7 @@ export type {
   HidLayer,
   LogFn,
   LogLevel,
+  OutputTransport,
   TransferReply,
   TransferResult,
   TransferStep,

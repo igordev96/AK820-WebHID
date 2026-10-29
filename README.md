@@ -22,7 +22,9 @@ Version 2.0.0 is a Vite, React and TypeScript rewrite of the v1.0.1 single-file 
 the transfer sequence and the wire bytes are unchanged. The new build has passed tests against a
 fake device, and hardware Test 9 passed on 29 Oct 2026: top layer, Fn media override, both restore
 actions and the upload lock were checked on the board. The screen clock was added the same day and
-confirmed on the board in Test 10, for both this computer's time and a time picked by hand.
+confirmed on the board in Test 10, for both this computer's time and a time picked by hand. Test 11
+added the screen image channel: one 128 × 128 picture over the `0xFF68` interface, confirmed on the
+screen.
 [docs/02-hardware-tests.md](docs/02-hardware-tests.md) records the evidence.
 
 ## What it does
@@ -32,6 +34,7 @@ confirmed on the board in Test 10, for both this computer's time and a time pick
 - Assigns consumer keys: mute, volume, play/pause, track skip, browser back and forward,
   calculator and email.
 - Sets the clock on the keyboard's screen, from this computer or from a time you pick.
+- Sends a 128 × 128 image to the screen.
 - Restores the factory top map or clears every Fn override.
 - Runs diagnostics, a deep probe, a mailbox probe and raw test commands from the Advanced drawer.
 
@@ -111,6 +114,15 @@ The keyboard has no timezone, so the clock follows the time you send. A daylight
 later in the year will not move it. The page never sets the clock on connect; you press **Send
 time** when you want it.
 
+### The screen image
+
+**Send an image** takes a PNG, JPEG or WebP, scales it to 128 × 128, and writes it to the screen. It
+replaces the animation on the keyboard, which this tool cannot read back. The vendor app can put
+the stock animation back.
+
+The picture never leaves the page. It is converted in the browser and written straight to the
+keyboard.
+
 **Advanced** opens the diagnostics, the deep probe, the mailbox probe and a raw command card.
 These send test commands and never write a keymap. Uploads are locked while one of them runs.
 
@@ -131,6 +143,10 @@ Undo a whole layer with **Restore factory map** or **Clear all Fn overrides**.
 
 If the screen clock drifts, send it again from **Screen**. Opening the vendor app also sets the
 clock, because it does that whenever it starts with the keyboard connected.
+
+If you want the stock animation back, import the vendor's `0.gif` in the vendor app and upload it
+there. This tool cannot read what is on the screen, so it cannot save the current animation for
+you.
 
 If the app refuses a transfer, it stops before staging data, so the keyboard is unchanged. Unplug
 and replug the keyboard, then try again. Close any other program that may hold the interface.

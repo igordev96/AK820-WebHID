@@ -2,8 +2,18 @@ import type { Clock } from '@/lib/clock';
 import { realClock } from '@/lib/clock';
 import { hex } from '@/lib/format';
 import { TABLE_SIZE } from '@/lib/keymap';
+import { SCREEN_BLOCK_SIZE, SCREEN_BLOCKS_PER_FRAME } from '@/lib/screen';
 import type { HidTransport } from './client';
-import { CHUNK_COUNT, CHUNK_SIZE, COMMANDS, padFrame, STATUS, TIME_SLOT, TIMING } from './protocol';
+import {
+  CHUNK_COUNT,
+  CHUNK_SIZE,
+  COMMANDS,
+  padFrame,
+  SCREEN_MODE_ANIMATION,
+  STATUS,
+  TIME_SLOT,
+  TIMING,
+} from './protocol';
 import { buildTimePacket } from './time';
 
 export type HidLayer = 'top' | 'fn';
@@ -21,6 +31,7 @@ export type TransferStep =
   | { readonly step: 'begin'; readonly reply: TransferReply }
   | { readonly step: 'announce'; readonly reply: TransferReply }
   | { readonly step: 'chunks'; readonly reply: TransferReply }
+  | { readonly step: 'blocks'; readonly reply: TransferReply }
   | { readonly step: 'commit'; readonly reply: TransferReply }
   | { readonly step: 'end'; readonly reply: TransferReply }
   | { readonly step: 'aborted'; readonly reply: TransferReply };
@@ -37,6 +48,11 @@ type Sequence = {
   readonly sendEnd: boolean;
 };
 
+/** The screen data channel, separate from the 65-byte feature transport. */
+export type OutputTransport = {
+  sendOutput(payload: Uint8Array): Promise<void>;
+};
+
 const errorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
@@ -49,6 +65,7 @@ export class TransferService {
     private readonly transport: HidTransport,
     private readonly clock: Clock = realClock,
     private readonly log: LogFn = noLog,
+    private readonly output?: OutputTransport,
   ) {}
 
   get isBusy(): boolean {
@@ -107,6 +124,132 @@ export class TransferService {
     } finally {
       this.busy = false;
     }
+  }
+
+  /**
+   * Uploads a screen animation: begin and announce on the config collection,
+   * then 4096-byte output reports on the screen collection, then the commit.
+   * The payload comes from `buildAnimationPayload`.
+   */
+  async sendAnimation(
+    payload: Uint8Array,
+    onProgress?: (sentBlocks: number, totalBlocks: number) => void,
+  ): Promise<TransferResult> {
+    if (payload.length === 0 || payload.length % SCREEN_BLOCK_SIZE !== 0) {
+      throw new Error(`animation payload must be a multiple of ${SCREEN_BLOCK_SIZE} bytes`);
+    }
+    if (!this.output) {
+      throw new Error('the screen data channel is not available');
+    }
+
+    if (this.busy) {
+      this.log('a transfer is already running — ignoring this request', 'warn');
+      return { steps: [], busy: true };
+    }
+
+    this.busy = true;
+    try {
+      return { steps: await this.runAnimation(payload, onProgress) };
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  private async runAnimation(
+    payload: Uint8Array,
+    onProgress?: (sentBlocks: number, totalBlocks: number) => void,
+  ): Promise<TransferStep[]> {
+    const output = this.output;
+    if (!output) throw new Error('the screen data channel is not available');
+
+    const blocks = payload.length / SCREEN_BLOCK_SIZE;
+    const steps: TransferStep[] = [];
+
+    await this.send(Uint8Array.from(COMMANDS.begin));
+    const begin = await this.waitReply(COMMANDS.begin[1], 'begin 04 18');
+    steps.push({ step: 'begin', reply: begin });
+
+    if (begin.status !== STATUS.ok) {
+      this.log(
+        `  ⇒ begin ${
+          begin.status === null ? 'got no reply' : `rejected (0x${hex([begin.status])})`
+        } — aborting before any data is staged`,
+        'err',
+      );
+      await this.abort();
+      steps.push({ step: 'aborted', reply: { status: begin.status, raw: begin.raw, ms: 0 } });
+      return steps;
+    }
+
+    const announce = padFrame(
+      Uint8Array.from([...COMMANDS.animation, SCREEN_MODE_ANIMATION, 0, 0, 0, 0, 0]),
+    );
+    announce[8] = blocks;
+    this.log(`SEND  ${hex(announce)}`, 'info');
+    await this.transport.send(announce);
+
+    const announced = await this.waitReply(COMMANDS.animation[1], 'announce 04 72');
+    steps.push({ step: 'announce', reply: announced });
+
+    if (announced.status !== STATUS.ok) {
+      this.log(
+        `  ⇒ announce ${
+          announced.status === null ? 'got no reply' : `rejected (0x${hex([announced.status])})`
+        } — aborting before any pixel is sent`,
+        'err',
+      );
+      await this.abort();
+      steps.push({
+        step: 'aborted',
+        reply: { status: announced.status, raw: announced.raw, ms: 0 },
+      });
+      return steps;
+    }
+
+    await this.clock.sleep(TIMING.screenStartPause);
+
+    const started = this.clock.now();
+    try {
+      for (let index = 0; index < blocks; index += 1) {
+        await output.sendOutput(
+          payload.subarray(index * SCREEN_BLOCK_SIZE, (index + 1) * SCREEN_BLOCK_SIZE),
+        );
+
+        if (index > 0 && index % SCREEN_BLOCKS_PER_FRAME === 0) {
+          const frame = index / SCREEN_BLOCKS_PER_FRAME;
+          const totalFrames = Math.floor(blocks / SCREEN_BLOCKS_PER_FRAME);
+          this.log(`  frame ${frame}/${totalFrames} sent`, 'dim');
+        }
+
+        onProgress?.(index + 1, blocks);
+        if (index < blocks - 1) await this.clock.sleep(TIMING.screenBlockGap);
+      }
+    } catch (error) {
+      this.log(`  the screen stopped accepting data: ${errorMessage(error)}`, 'err');
+      await this.abort();
+      steps.push({
+        step: 'aborted',
+        reply: { status: null, raw: null, ms: Math.round(this.clock.now() - started) },
+      });
+      return steps;
+    }
+
+    this.log(
+      `SENT  ${blocks} x ${SCREEN_BLOCK_SIZE}-byte blocks (${payload.length} bytes) in ${Math.round(
+        this.clock.now() - started,
+      )} ms`,
+      'dim',
+    );
+    steps.push({
+      step: 'blocks',
+      reply: { status: STATUS.ok, raw: null, ms: Math.round(this.clock.now() - started) },
+    });
+
+    await this.send(Uint8Array.from(COMMANDS.commit));
+    const commit = await this.waitReply(COMMANDS.commit[1], 'commit 04 02');
+    steps.push({ step: 'commit', reply: commit });
+
+    return steps;
   }
 
   private async runSequence(sequence: Sequence): Promise<TransferStep[]> {

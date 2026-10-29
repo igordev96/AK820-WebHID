@@ -15,11 +15,18 @@ export const COMMANDS = {
   top: [0x04, 0x11],
   fn: [0x04, 0x27],
   time: [0x04, 0x28],
+  animation: [0x04, 0x72],
   commit: [0x04, 0x02],
   end: [0x04, 0xf0],
   read: [0x04, 0x19],
   version: [0x04, 0xf5],
 } as const;
+
+/** Screen output collection: usage page 0xFF68, usage 0x0061, 4097-byte reports. */
+export const SCREEN_USAGE_PAGE = 0xff68;
+export const SCREEN_USAGE = 0x0061;
+export const SCREEN_REPORT_SIZE = 4096;
+export const SCREEN_MODE_ANIMATION = 0x03;
 
 /** Screen slot byte the vendor app sends with a clock sync (GetCurSel + 1). */
 export const TIME_SLOT = 1;
@@ -37,6 +44,8 @@ export const TIMING = {
   chunkGap: 12,
   chunkAttempts: 4,
   chunkRetry: 250,
+  screenStartPause: 250,
+  screenBlockGap: 150,
 } as const;
 
 export const STATUS = {

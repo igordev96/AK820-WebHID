@@ -1,15 +1,29 @@
 import { useEffect, useState } from 'react';
 import { ClockCard, type ClockMode, type TimeStatus } from './ClockCard';
+import { ImageCard, type ImageStatus } from './ImageCard';
 import { ScreenPreview } from './ScreenPreview';
 
 type ScreenPanelProps = {
   connected: boolean;
+  screenReady: boolean;
   busy: boolean;
   status: TimeStatus;
+  imageStatus: ImageStatus;
+  imageProgress: { readonly sent: number; readonly total: number } | null;
   onSend: (at: Date) => void;
+  onSendImage: (frame: Uint8Array) => void;
 };
 
-export function ScreenPanel({ connected, busy, status, onSend }: ScreenPanelProps) {
+export function ScreenPanel({
+  connected,
+  screenReady,
+  busy,
+  status,
+  imageStatus,
+  imageProgress,
+  onSend,
+  onSendImage,
+}: ScreenPanelProps) {
   const [mode, setMode] = useState<ClockMode>('now');
   const [now, setNow] = useState(() => new Date());
   const [customAt, setCustomAt] = useState<Date | null>(null);
@@ -52,6 +66,14 @@ export function ScreenPanel({ connected, busy, status, onSend }: ScreenPanelProp
           onModeChange={changeMode}
           onCustomChange={setCustomAt}
           onSend={send}
+        />
+        <ImageCard
+          connected={connected}
+          screenReady={screenReady}
+          busy={busy}
+          status={imageStatus}
+          progress={imageProgress}
+          onSend={onSendImage}
         />
       </div>
     </>

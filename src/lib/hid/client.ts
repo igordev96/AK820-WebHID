@@ -5,6 +5,7 @@ import { padFrame, REPORT_ID } from './protocol';
 export type HidDeviceLike = {
   sendFeatureReport(reportId: number, data: BufferSource): Promise<void>;
   receiveFeatureReport(reportId: number): Promise<DataView>;
+  sendReport?(reportId: number, data: BufferSource): Promise<void>;
 };
 
 export type HidReadResult =
@@ -24,6 +25,16 @@ export class HidClient implements HidTransport {
 
   async send(payload: Uint8Array): Promise<void> {
     await this.device.sendFeatureReport(REPORT_ID, padFrame(payload));
+  }
+
+  /** The screen data channel: 4096-byte output reports on the 0xFF68 collection. */
+  async sendOutput(payload: Uint8Array): Promise<void> {
+    if (!this.device.sendReport) {
+      throw new Error('this browser cannot send output reports');
+    }
+    const frame = new Uint8Array(payload.length);
+    frame.set(payload);
+    await this.device.sendReport(REPORT_ID, frame);
   }
 
   async read(timeoutMs: number): Promise<HidReadResult> {

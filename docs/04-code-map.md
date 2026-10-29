@@ -14,12 +14,13 @@ src/styles/globals.css   colour, type and radius tokens, bench mat, base styles
 src/components/ui/       Button, Popover, Calendar (shadcn patterns over Radix)
 src/lib/keymap/          constants, factory keys, record encoding, names, parsing, table
 src/lib/hid/             protocol, client, collections, WebHID types, transfer, time, probes, raw
+src/lib/screen/          RGB565, frame layout, animation payload
 src/lib/editor/          row state, reducer, validation, persistence
 src/lib/clock.ts         Clock type and the real timer
 src/lib/format.ts        hex formatting
 src/features/device/     useDevice, AppHeader, ViewTabs
 src/features/editor/     LayerTabs, KeymapBoard, KeyInspector, PendingBar, WriteRules, keyLabels
-src/features/screen/     ScreenPanel, ScreenPreview, ClockCard, DateTimePicker
+src/features/screen/     ScreenPanel, ScreenPreview, ClockCard, DateTimePicker, ImageCard
 src/features/log/        useLog, LogPanel
 src/features/advanced/   AdvancedDrawer
 src/test/                Vitest setup, fake HID device and fake clock
@@ -71,6 +72,11 @@ not a transport failure; `isTransportFailed` keeps the two apart.
 
 There is no `04 F0` after the commit, which matches the vendor app. `src/lib/hid/time.ts` builds
 the body; the layout is in `docs/01-protocol.md` §9.
+
+`TransferService.sendAnimation` writes the screen. Begin and announce (`04 72`, mode 3, block
+count) go over the feature transport, the 4096-byte blocks go over a separate `OutputTransport`
+bound to the `0xFF68` device, then the commit. Blocks are paced 150 ms apart, which matches the
+vendor's 153 ms. `src/lib/screen` builds the buffer; the layout is in `docs/01-protocol.md` §10.
 
 `TransferService` owns the transfer lock. A second `sendTable` or `sendTime` call returns
 `{ busy: true }` instead of interleaving. `App` also keeps one busy flag for uploads, clock writes
@@ -144,6 +150,10 @@ two-column grid: the 128 × 128 preview takes the board's place, and `ClockCard`
 inspector's. The card owns the Now/Custom choice, the live clock and the send status. A clock write
 is never started by connecting or by switching views; it needs the **Send time** button.
 
+`ImageCard` sits under the clock card. It scales a chosen file to 128 × 128, converts it to RGB565
+and sends one frame. The file never leaves the page. The card is disabled when WebHID did not
+return the `0xFF68` interface.
+
 `AdvancedDrawer` holds four tabs: diagnostics, deep probe, mailbox and raw command. It takes a
 `clock` prop, which is the real clock in the app and a fake clock in tests. Probes report through
 the same log and set the app busy flag through `onBusyChange`.
@@ -161,6 +171,7 @@ the same log and set the app busy flag through `onBusyChange`.
 | `src/lib/hid/client.test.ts` | feature send/read, timeout and errors |
 | `src/lib/hid/transfer.test.ts` | the full sequence, abort paths, busy lock, byte order, clock |
 | `src/lib/hid/time.test.ts` | clock body, year offset, weekday, input parser |
+| `src/lib/screen/animation.test.ts` | RGB565, header, delays, frame placement |
 | `src/lib/hid/collections.test.ts` | flattening and config collection lookup |
 | `src/lib/hid/diagnostics.test.ts` | pass, refused write, silent read, missing collection |
 | `src/lib/hid/deepProbe.test.ts` | echo, silent device |
@@ -201,6 +212,8 @@ All five must pass before a commit.
     upload is a hardware failure.
 11. **The screen clock shares the transfer lock.** It stages one 64-byte chunk, commits, and sends
     no end command. It never touches the key table, and it is never written on connect.
+12. **Screen pixels use their own interface.** The 4096-byte output reports go to the `0xFF68`
+    device; the `0xFF13` feature transport only carries begin, announce and commit.
 
 ## 9. Common changes
 

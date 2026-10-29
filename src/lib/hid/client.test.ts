@@ -70,4 +70,38 @@ describe('HidClient', () => {
 
     expect(result).toEqual({ ok: false, reason: 'device busy' });
   });
+
+  it('sends a 4096-byte output report with report id 0', async () => {
+    const calls: Array<{ id: number; frame: Uint8Array }> = [];
+    const device: HidDeviceLike = {
+      async sendFeatureReport() {},
+      async receiveFeatureReport() {
+        throw new Error('not used');
+      },
+      async sendReport(id, data) {
+        calls.push({ id, frame: new Uint8Array(data as Uint8Array) });
+      },
+    };
+
+    const payload = new Uint8Array(4096).fill(0xab);
+    await new HidClient(device, blockingClock).sendOutput(payload);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.id).toBe(0);
+    expect(calls[0]?.frame).toHaveLength(4096);
+    expect(calls[0]?.frame[0]).toBe(0xab);
+  });
+
+  it('refuses to send output when the device has no output reports', async () => {
+    const device: HidDeviceLike = {
+      async sendFeatureReport() {},
+      async receiveFeatureReport() {
+        throw new Error('not used');
+      },
+    };
+
+    await expect(
+      new HidClient(device, blockingClock).sendOutput(new Uint8Array(4096)),
+    ).rejects.toThrow(/output/);
+  });
 });

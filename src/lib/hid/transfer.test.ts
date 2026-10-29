@@ -1,5 +1,6 @@
 import { FACTORY_KEYS, buildTable } from '@/lib/keymap';
 import type { HidReadResult } from '@/lib/hid/client';
+import { SCREEN_BLOCK_SIZE, SCREEN_FRAME_BYTES, buildAnimationPayload } from '@/lib/screen';
 import { FakeClock, FakeTransport, reply } from '@/test/hidFakes';
 import { describe, expect, it } from 'vitest';
 import { buildTimePacket } from './time';
@@ -14,16 +15,32 @@ const topReplies = (): HidReadResult[] => [
   reply(0xf0, 0x01),
 ];
 
-const makeService = (replies: HidReadResult[] = []) => {
+const makeService = (replies: HidReadResult[] = [], withOutput = false) => {
   const transport = new FakeTransport();
   transport.replies = replies;
   const clock = new FakeClock();
+  const output = withOutput ? new FakeOutput() : undefined;
   const lines: string[] = [];
-  const service = new TransferService(transport, clock, (message, level) => {
-    lines.push(`${level ?? 'log'}: ${message}`);
-  });
-  return { service, transport, clock, lines };
+  const service = new TransferService(
+    transport,
+    clock,
+    (message, level) => {
+      lines.push(`${level ?? 'log'}: ${message}`);
+    },
+    output,
+  );
+  return { service, transport, clock, lines, output };
 };
+
+class FakeOutput {
+  readonly sent: Uint8Array[] = [];
+  failAt = 0;
+
+  async sendOutput(payload: Uint8Array): Promise<void> {
+    this.sent.push(payload.slice());
+    if (this.failAt === this.sent.length) throw new Error('output report refused');
+  }
+}
 
 const bytes = (value: Uint8Array) => Array.from(value);
 
@@ -228,5 +245,81 @@ describe('TransferService clock', () => {
     expect(result.steps.at(-1)?.reply.status).toBe(0xff);
     expect(transport.sent).toHaveLength(4);
     expect(bytes(transport.sent.at(-1) ?? new Uint8Array())).toEqual([0x04, 0x02]);
+  });
+});
+
+const screenReplies = (): HidReadResult[] => [
+  reply(0x18, 0x01),
+  reply(0x72, 0x01),
+  reply(0x02, 0x01),
+];
+
+describe('TransferService screen', () => {
+  const frame = new Uint8Array(SCREEN_FRAME_BYTES);
+  const payload = buildAnimationPayload({ frames: [frame], delaysMs: [100] });
+
+  it('announces mode 3 and streams the blocks without an end command', async () => {
+    const { service, transport, output } = makeService(screenReplies(), true);
+    const progress: Array<[number, number]> = [];
+
+    const result = await service.sendAnimation(payload, (sent, total) => {
+      progress.push([sent, total]);
+    });
+
+    expect(result.steps.map((step) => step.step)).toEqual([
+      'begin',
+      'announce',
+      'blocks',
+      'commit',
+    ]);
+    expect(isTransportFailed(result.steps)).toBe(false);
+    expect(transport.sent).toHaveLength(3);
+
+    const announce = transport.sent[1] ?? new Uint8Array();
+    expect(announce[1]).toBe(0x72);
+    expect(announce[2]).toBe(3);
+    expect(announce[8]).toBe(9);
+
+    expect(output?.sent).toHaveLength(9);
+    expect(bytes(output?.sent[0] ?? new Uint8Array())).toEqual(
+      bytes(payload.subarray(0, SCREEN_BLOCK_SIZE)),
+    );
+    expect(progress.at(-1)).toEqual([9, 9]);
+    expect(bytes(transport.sent.at(-1) ?? new Uint8Array())).toEqual([0x04, 0x02]);
+  });
+
+  it('aborts and skips the commit when a block is refused', async () => {
+    const { service, transport, output } = makeService(
+      [reply(0x18, 0x01), reply(0x72, 0x01)],
+      true,
+    );
+    if (output) output.failAt = 3;
+
+    const result = await service.sendAnimation(payload);
+
+    expect(result.steps.map((step) => step.step)).toEqual(['begin', 'announce', 'aborted']);
+    expect(isTransportFailed(result.steps)).toBe(true);
+    expect(transport.sent).toHaveLength(3);
+    expect(bytes(transport.sent.at(-1) ?? new Uint8Array())).toEqual([0x04, 0xf0]);
+    expect(output?.sent).toHaveLength(3);
+  });
+
+  it('shares the lock with a table transfer', async () => {
+    const { service, output } = makeService(topReplies(), true);
+
+    const first = service.sendTable(table, 'top');
+    const second = await service.sendAnimation(payload);
+    await first;
+
+    expect(second).toEqual({ steps: [], busy: true });
+    expect(output?.sent).toHaveLength(0);
+    expect(service.isBusy).toBe(false);
+  });
+
+  it('rejects a payload that is not block aligned', async () => {
+    const { service } = makeService([], true);
+
+    await expect(service.sendAnimation(new Uint8Array(100))).rejects.toThrow(/4096/);
+    await expect(service.sendAnimation(new Uint8Array(0))).rejects.toThrow(/4096/);
   });
 });
