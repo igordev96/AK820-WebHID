@@ -7,8 +7,12 @@ export {
   SCREEN_HEIGHT,
   SCREEN_MAX_DELAY_MS,
   SCREEN_MAX_FRAMES,
+  SCREEN_MIN_DELAY_MS,
   SCREEN_WIDTH,
   buildAnimationPayload,
   encodeRgb565,
+  normalizeDelayMs,
 } from './animation';
 export type { AnimationInput } from './animation';
+export { decodeAnimation, supportsAnimationDecoding } from './decode';
+export type { DecodedAnimation } from './decode';

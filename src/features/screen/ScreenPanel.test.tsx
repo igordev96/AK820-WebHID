@@ -10,10 +10,12 @@ const renderPanel = (onSend = vi.fn()) =>
       screenReady
       busy={false}
       status={{ kind: 'idle' }}
-      imageStatus={{ kind: 'idle' }}
-      imageProgress={null}
+      animationStatus={{ kind: 'idle' }}
+      animationProgress={null}
+      animationSending={false}
       onSend={onSend}
-      onSendImage={vi.fn()}
+      onSendAnimation={vi.fn()}
+      onCancelAnimation={vi.fn()}
     />,
   );
 

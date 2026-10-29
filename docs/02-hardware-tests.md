@@ -371,3 +371,30 @@ was touched.
 This page can write the screen data channel: the 0xFF68 interface, 4096-byte output reports, the
 same announce and commit as the vendor app. The image is one frame of the animation format, so the
 same path carries a multi-frame upload.
+
+## Test 12 — screen animation (29 Oct 2026)
+
+Build: the working tree that added the animation card, dev server on `http://localhost:5173`,
+Chrome on Windows, keyboard in USB mode.
+
+The user chose a 31-frame GIF of their own from the **Screen animation** card and uploaded it.
+
+```
+begin 04 18                 status 0x01
+announce 04 72 03 … F9      status 0x01, 0xF9 = 249 blocks
+249 x 4096-byte reports     on 0xFF68, frame progress every 8 blocks
+commit 04 02                status 0x01
+```
+
+The log reported `SENT 249 x 4096-byte blocks (1019904 bytes) in 53937 ms` and `Screen animation
+sent (31 frames)`. The user confirmed the screen played the GIF.
+
+Timing: about **216 ms per block**, against the vendor app's 153 ms. Chrome's output report takes
+roughly 60 ms, and the page keeps its 150 ms gap on top, so a 140-frame animation is about four
+minutes.
+
+### Test 12 conclusion
+
+The page plays a multi-frame GIF of arbitrary length up to the vendor's 140-frame limit. Frame
+delays come from the GIF and are clamped to 30-500 ms. Cancel was not exercised on the board; the
+abort path is covered by unit tests only.

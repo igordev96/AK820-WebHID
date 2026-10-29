@@ -23,8 +23,8 @@ the transfer sequence and the wire bytes are unchanged. The new build has passed
 fake device, and hardware Test 9 passed on 29 Oct 2026: top layer, Fn media override, both restore
 actions and the upload lock were checked on the board. The screen clock was added the same day and
 confirmed on the board in Test 10, for both this computer's time and a time picked by hand. Test 11
-added the screen image channel: one 128 × 128 picture over the `0xFF68` interface, confirmed on the
-screen.
+added the screen data channel with one 128 × 128 picture, and Test 12 played a 31-frame GIF the user
+chose. Both were confirmed on the screen.
 [docs/02-hardware-tests.md](docs/02-hardware-tests.md) records the evidence.
 
 ## What it does
@@ -34,7 +34,7 @@ screen.
 - Assigns consumer keys: mute, volume, play/pause, track skip, browser back and forward,
   calculator and email.
 - Sets the clock on the keyboard's screen, from this computer or from a time you pick.
-- Sends a 128 × 128 image to the screen.
+- Plays a GIF on the screen, up to 140 frames, or one still picture.
 - Restores the factory top map or clears every Fn override.
 - Runs diagnostics, a deep probe, a mailbox probe and raw test commands from the Advanced drawer.
 
@@ -114,14 +114,17 @@ The keyboard has no timezone, so the clock follows the time you send. A daylight
 later in the year will not move it. The page never sets the clock on connect; you press **Send
 time** when you want it.
 
-### The screen image
+### The screen animation
 
-**Send an image** takes a PNG, JPEG or WebP, scales it to 128 × 128, and writes it to the screen. It
-replaces the animation on the keyboard, which this tool cannot read back. The vendor app can put
-the stock animation back.
+**Screen animation** takes a GIF, or one still picture, and plays it on the screen. Frames are
+scaled to 128 × 128 in the browser and sent with their own delays, clamped to 30–500 ms. The
+keyboard holds at most 140 frames; longer GIFs use the first 140 and the card says so.
 
-The picture never leaves the page. It is converted in the browser and written straight to the
-keyboard.
+The upload takes about 50 seconds for 30 frames and about four minutes for 140, so the card shows a
+progress bar and a **Cancel** button. A picture never leaves the page.
+
+This replaces the animation on the keyboard, which this tool cannot read back. The vendor app can
+put the stock animation back.
 
 **Advanced** opens the diagnostics, the deep probe, the mailbox probe and a raw command card.
 These send test commands and never write a keymap. Uploads are locked while one of them runs.

@@ -11,7 +11,7 @@ import { WriteRules } from '@/features/editor/WriteRules';
 import { LogPanel } from '@/features/log/LogPanel';
 import { useLog } from '@/features/log/useLog';
 import { ScreenPanel } from '@/features/screen/ScreenPanel';
-import type { ImageStatus } from '@/features/screen/ImageCard';
+import type { ScreenStatus } from '@/features/screen/AnimationCard';
 import type { TimeStatus } from '@/features/screen/ClockCard';
 import { realClock } from '@/lib/clock';
 import {
@@ -63,11 +63,13 @@ export function App() {
   const [logOpen, setLogOpen] = useState(false);
   const [view, setView] = useState<View>('keys');
   const [timeStatus, setTimeStatus] = useState<TimeStatus>({ kind: 'idle' });
-  const [imageStatus, setImageStatus] = useState<ImageStatus>({ kind: 'idle' });
-  const [imageProgress, setImageProgress] = useState<{
+  const [animationStatus, setAnimationStatus] = useState<ScreenStatus>({ kind: 'idle' });
+  const [animationSending, setAnimationSending] = useState(false);
+  const [animationProgress, setAnimationProgress] = useState<{
     readonly sent: number;
     readonly total: number;
   } | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const transfer = useMemo(() => {
     if (!device.device || !device.configFound) return null;
@@ -258,8 +260,8 @@ export function App() {
     [log, transfer],
   );
 
-  const handleSendImage = useCallback(
-    async (frame: Uint8Array) => {
+  const handleSendAnimation = useCallback(
+    async (frames: Uint8Array[], delays: number[]) => {
       if (!transfer) {
         log('Connect the keyboard first.', 'warn');
         return;
@@ -268,13 +270,22 @@ export function App() {
 
       busyRef.current = true;
       setBusy(true);
-      setImageStatus({ kind: 'idle' });
-      setImageProgress(null);
+      setAnimationStatus({ kind: 'idle' });
+      setAnimationProgress(null);
+      setAnimationSending(true);
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+      let sentBlocks = 0;
 
       try {
-        const payload = buildAnimationPayload({ frames: [frame], delaysMs: [100] });
-        const result = await transfer.sendAnimation(payload, (sent, total) => {
-          setImageProgress({ sent, total });
+        const payload = buildAnimationPayload({ frames, delaysMs: delays });
+        const result = await transfer.sendAnimation(payload, {
+          signal: controller.signal,
+          onProgress: (sent, total) => {
+            sentBlocks = sent;
+            setAnimationProgress({ sent, total });
+          },
         });
 
         if (result.busy) {
@@ -282,10 +293,20 @@ export function App() {
           return;
         }
 
-        if (isTransportFailed(result.steps)) {
-          setImageStatus({
+        if (result.steps.some((step) => step.step === 'cancelled')) {
+          const done = Math.max(0, Math.floor((sentBlocks - 1) / 8));
+          setAnimationStatus({
             kind: 'err',
-            message: 'The upload stopped before the commit. The screen may show part of the image.',
+            message: `Stopped after ${done} of ${frames.length} frames. The screen may show part of the animation.`,
+          });
+          log('Screen upload cancelled. The screen may hold part of the animation.', 'warn');
+          return;
+        }
+
+        if (isTransportFailed(result.steps)) {
+          setAnimationStatus({
+            kind: 'err',
+            message: 'The upload stopped before the commit. The screen may show part of it.',
           });
           log('The screen upload stopped early. The commit was not sent.', 'err');
           return;
@@ -295,33 +316,42 @@ export function App() {
         const status = commit?.reply.status ?? null;
 
         if (status === STATUS.ok) {
-          setImageStatus({ kind: 'ok', message: 'Sent. The screen is showing the image.' });
-          log('Screen image sent. The image is live.', 'ok');
+          setAnimationStatus({ kind: 'ok', message: 'Sent. The screen is playing the animation.' });
+          log(`Screen animation sent (${frames.length} frames).`, 'ok');
           return;
         }
 
-        setImageStatus({
+        setAnimationStatus({
           kind: 'err',
-          message: 'The keyboard refused the image. The old animation should still be on screen.',
+          message: 'The keyboard refused the animation. The old one should still be on screen.',
         });
         log(
-          `Screen image rejected (${
+          `Screen animation rejected (${
             status === null ? 'no reply' : `0x${hex([status])}`
-          }). The old animation should still be live.`,
+          }). The old one should still be live.`,
           'err',
         );
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        setImageStatus({ kind: 'err', message: 'The image could not be sent. Nothing changed.' });
+        setAnimationStatus({
+          kind: 'err',
+          message: 'The animation could not be sent. Nothing changed.',
+        });
         log(`Screen upload failed: ${message}`, 'err');
       } finally {
+        abortRef.current = null;
+        setAnimationSending(false);
+        setAnimationProgress(null);
         busyRef.current = false;
         setBusy(false);
-        setImageProgress(null);
       }
     },
     [log, transfer],
   );
+
+  const handleCancelAnimation = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
 
   const handleOpenAdvanced = useCallback(() => {
     if (!connected || busyRef.current) return;
@@ -425,10 +455,12 @@ export function App() {
               screenReady={device.screenFound}
               busy={busy}
               status={timeStatus}
-              imageStatus={imageStatus}
-              imageProgress={imageProgress}
+              animationStatus={animationStatus}
+              animationProgress={animationProgress}
+              animationSending={animationSending}
               onSend={handleSendTime}
-              onSendImage={handleSendImage}
+              onSendAnimation={handleSendAnimation}
+              onCancelAnimation={handleCancelAnimation}
             />
           )}
         </div>

@@ -5,8 +5,16 @@ export const SCREEN_BLOCK_SIZE = 4096;
 export const SCREEN_BLOCKS_PER_FRAME = SCREEN_FRAME_BYTES / SCREEN_BLOCK_SIZE;
 export const SCREEN_FRAMES_OFFSET = 256;
 export const SCREEN_MAX_FRAMES = 140;
-export const SCREEN_MAX_DELAY_MS = 510;
+export const SCREEN_MIN_DELAY_MS = 30;
+export const SCREEN_MAX_DELAY_MS = 500;
 export const SCREEN_DELAY_UNIT_MS = 2;
+
+/** Clamps a frame delay to the vendor range and snaps it to the 2 ms unit. */
+export function normalizeDelayMs(ms: number): number {
+  const safe = Number.isFinite(ms) ? ms : 100;
+  const clamped = Math.min(SCREEN_MAX_DELAY_MS, Math.max(SCREEN_MIN_DELAY_MS, Math.round(safe)));
+  return Math.round(clamped / SCREEN_DELAY_UNIT_MS) * SCREEN_DELAY_UNIT_MS;
+}
 
 /**
  * Converts RGBA pixels to little-endian RGB565, the order the screen wants:
@@ -72,7 +80,6 @@ export function buildAnimationPayload({ frames, delaysMs }: AnimationInput): Uin
     if (!Number.isFinite(delay) || delay < 0 || delay > SCREEN_MAX_DELAY_MS) {
       throw new Error(`frame ${index + 1} delay must be 0 to ${SCREEN_MAX_DELAY_MS} ms`);
     }
-
     payload[1 + index] = Math.round(delay / SCREEN_DELAY_UNIT_MS);
     payload.set(frame, SCREEN_FRAMES_OFFSET + index * SCREEN_FRAME_BYTES);
   }

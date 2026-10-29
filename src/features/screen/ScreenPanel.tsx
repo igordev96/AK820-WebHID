@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
+import { AnimationCard, type ScreenStatus } from './AnimationCard';
 import { ClockCard, type ClockMode, type TimeStatus } from './ClockCard';
-import { ImageCard, type ImageStatus } from './ImageCard';
 import { ScreenPreview } from './ScreenPreview';
 
 type ScreenPanelProps = {
@@ -8,10 +8,12 @@ type ScreenPanelProps = {
   screenReady: boolean;
   busy: boolean;
   status: TimeStatus;
-  imageStatus: ImageStatus;
-  imageProgress: { readonly sent: number; readonly total: number } | null;
+  animationStatus: ScreenStatus;
+  animationProgress: { readonly sent: number; readonly total: number } | null;
+  animationSending: boolean;
   onSend: (at: Date) => void;
-  onSendImage: (frame: Uint8Array) => void;
+  onSendAnimation: (frames: Uint8Array[], delays: number[]) => void;
+  onCancelAnimation: () => void;
 };
 
 export function ScreenPanel({
@@ -19,10 +21,12 @@ export function ScreenPanel({
   screenReady,
   busy,
   status,
-  imageStatus,
-  imageProgress,
+  animationStatus,
+  animationProgress,
+  animationSending,
   onSend,
-  onSendImage,
+  onSendAnimation,
+  onCancelAnimation,
 }: ScreenPanelProps) {
   const [mode, setMode] = useState<ClockMode>('now');
   const [now, setNow] = useState(() => new Date());
@@ -67,13 +71,15 @@ export function ScreenPanel({
           onCustomChange={setCustomAt}
           onSend={send}
         />
-        <ImageCard
+        <AnimationCard
           connected={connected}
           screenReady={screenReady}
           busy={busy}
-          status={imageStatus}
-          progress={imageProgress}
-          onSend={onSendImage}
+          sending={animationSending}
+          status={animationStatus}
+          progress={animationProgress}
+          onSend={onSendAnimation}
+          onCancel={onCancelAnimation}
         />
       </div>
     </>

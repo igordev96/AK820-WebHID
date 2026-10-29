@@ -5,6 +5,7 @@ import {
   SCREEN_FRAMES_OFFSET,
   buildAnimationPayload,
   encodeRgb565,
+  normalizeDelayMs,
 } from './animation';
 
 const solid = (byte: number) => new Uint8Array(SCREEN_FRAME_BYTES).fill(byte);
@@ -96,6 +97,16 @@ describe('buildAnimationPayload', () => {
     expect(() => buildAnimationPayload({ frames: [new Uint8Array(10)], delaysMs: [100] })).toThrow(
       /32768/,
     );
-    expect(() => buildAnimationPayload({ frames: [solid(0)], delaysMs: [600] })).toThrow(/510/);
+    expect(() => buildAnimationPayload({ frames: [solid(0)], delaysMs: [600] })).toThrow(/500/);
+  });
+});
+
+describe('normalizeDelayMs', () => {
+  it('clamps to the vendor range and snaps to 2 ms', () => {
+    expect(normalizeDelayMs(0)).toBe(30);
+    expect(normalizeDelayMs(31)).toBe(32);
+    expect(normalizeDelayMs(499)).toBe(500);
+    expect(normalizeDelayMs(999)).toBe(500);
+    expect(normalizeDelayMs(Number.NaN)).toBe(100);
   });
 });

@@ -34,6 +34,7 @@ export type TransferStep =
   | { readonly step: 'blocks'; readonly reply: TransferReply }
   | { readonly step: 'commit'; readonly reply: TransferReply }
   | { readonly step: 'end'; readonly reply: TransferReply }
+  | { readonly step: 'cancelled'; readonly reply: TransferReply }
   | { readonly step: 'aborted'; readonly reply: TransferReply };
 
 export type TransferResult = {
@@ -51,6 +52,11 @@ type Sequence = {
 /** The screen data channel, separate from the 65-byte feature transport. */
 export type OutputTransport = {
   sendOutput(payload: Uint8Array): Promise<void>;
+};
+
+export type AnimationOptions = {
+  readonly onProgress?: (sentBlocks: number, totalBlocks: number) => void;
+  readonly signal?: AbortSignal;
 };
 
 const errorMessage = (error: unknown): string =>
@@ -133,7 +139,7 @@ export class TransferService {
    */
   async sendAnimation(
     payload: Uint8Array,
-    onProgress?: (sentBlocks: number, totalBlocks: number) => void,
+    options: AnimationOptions = {},
   ): Promise<TransferResult> {
     if (payload.length === 0 || payload.length % SCREEN_BLOCK_SIZE !== 0) {
       throw new Error(`animation payload must be a multiple of ${SCREEN_BLOCK_SIZE} bytes`);
@@ -149,7 +155,7 @@ export class TransferService {
 
     this.busy = true;
     try {
-      return { steps: await this.runAnimation(payload, onProgress) };
+      return { steps: await this.runAnimation(payload, options) };
     } finally {
       this.busy = false;
     }
@@ -157,7 +163,7 @@ export class TransferService {
 
   private async runAnimation(
     payload: Uint8Array,
-    onProgress?: (sentBlocks: number, totalBlocks: number) => void,
+    options: AnimationOptions,
   ): Promise<TransferStep[]> {
     const output = this.output;
     if (!output) throw new Error('the screen data channel is not available');
@@ -209,8 +215,20 @@ export class TransferService {
     await this.clock.sleep(TIMING.screenStartPause);
 
     const started = this.clock.now();
+    const cancelled = (): TransferStep => ({
+      step: 'cancelled',
+      reply: { status: null, raw: null, ms: Math.round(this.clock.now() - started) },
+    });
+
     try {
       for (let index = 0; index < blocks; index += 1) {
+        if (options.signal?.aborted) {
+          this.log('  cancelled by the user — sending 04 F0', 'warn');
+          await this.abort();
+          steps.push(cancelled());
+          return steps;
+        }
+
         await output.sendOutput(
           payload.subarray(index * SCREEN_BLOCK_SIZE, (index + 1) * SCREEN_BLOCK_SIZE),
         );
@@ -221,7 +239,7 @@ export class TransferService {
           this.log(`  frame ${frame}/${totalFrames} sent`, 'dim');
         }
 
-        onProgress?.(index + 1, blocks);
+        options.onProgress?.(index + 1, blocks);
         if (index < blocks - 1) await this.clock.sleep(TIMING.screenBlockGap);
       }
     } catch (error) {

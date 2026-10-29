@@ -20,7 +20,7 @@ src/lib/clock.ts         Clock type and the real timer
 src/lib/format.ts        hex formatting
 src/features/device/     useDevice, AppHeader, ViewTabs
 src/features/editor/     LayerTabs, KeymapBoard, KeyInspector, PendingBar, WriteRules, keyLabels
-src/features/screen/     ScreenPanel, ScreenPreview, ClockCard, DateTimePicker, ImageCard
+src/features/screen/     ScreenPanel, ScreenPreview, ClockCard, DateTimePicker, AnimationCard
 src/features/log/        useLog, LogPanel
 src/features/advanced/   AdvancedDrawer
 src/test/                Vitest setup, fake HID device and fake clock
@@ -150,9 +150,10 @@ two-column grid: the 128 × 128 preview takes the board's place, and `ClockCard`
 inspector's. The card owns the Now/Custom choice, the live clock and the send status. A clock write
 is never started by connecting or by switching views; it needs the **Send time** button.
 
-`ImageCard` sits under the clock card. It scales a chosen file to 128 × 128, converts it to RGB565
-and sends one frame. The file never leaves the page. The card is disabled when WebHID did not
-return the `0xFF68` interface.
+`AnimationCard` sits under the clock card. It decodes a GIF with the browser's `ImageDecoder`
+(`src/lib/screen/decode.ts`), composites each frame to 128 × 128, converts it to RGB565 and keeps
+the delays. The file never leaves the page. Uploads show block progress and can be cancelled; the
+card is disabled when WebHID did not return the `0xFF68` interface.
 
 `AdvancedDrawer` holds four tabs: diagnostics, deep probe, mailbox and raw command. It takes a
 `clock` prop, which is the real clock in the app and a fake clock in tests. Probes report through
@@ -191,6 +192,9 @@ the same log and set the app busy flag through `onBusyChange`.
 
 The suite needs no keyboard. `src/test/hidFakes.ts` provides `FakeClock` and `FakeTransport`, and
 the app tests install a fake `navigator.hid`.
+
+`src/lib/screen/decode.ts` needs the browser's `ImageDecoder`, so it has no jsdom test; Test 12
+exercises it on the board.
 
 `npm run verify` runs the typecheck, the linter, the format check, Vitest and the production build.
 All five must pass before a commit.

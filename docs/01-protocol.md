@@ -333,8 +333,9 @@ The blocks concatenate into one buffer:
 | 256 | frame 1, then each further frame, 32768 bytes |
 | tail | `0xFF` to `blocks x 4096` |
 
-The vendor app paces the blocks about 153 ms apart and reads no reply per block. A 140-frame
-animation is therefore around three minutes.
+The vendor app paces the blocks about 153 ms apart and reads no reply per block. This page waits
+150 ms between reports, and Chrome's own write takes about 60 ms, so a block lands every ~215 ms. A
+140-frame animation is therefore around four minutes.
 
 On Windows the keyboard appears as several HID interfaces, and WebHID returns them as several
 devices. The page keeps `0xFF13` for the command path and `0xFF68` for the pixel path; sending a
