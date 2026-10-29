@@ -420,3 +420,21 @@ all the data, rejected the commit with `0xFF`, and left a mix of the new 60 fram
 stock animation showed the count is two bytes, `21 04` = 1057, and the page now writes both.
 
 Timing: about 226 ms per block, so 30 frames is around 55 seconds and 140 frames about four minutes.
+
+## Test 14 — interrupting an animation (29 Oct 2026)
+
+Build: 2.2.1, dev server on `http://localhost:5173`, Chrome on Windows. The stock 132-frame GIF,
+1057 blocks.
+
+The upload reached frame 40, then the user pressed **Cancel**. The page sent `04 F0` on the feature
+collection (`cancelled by the user — sending 04 F0`, 22:34:20).
+
+Result: the keyboard stopped responding. Every key was dead and the screen stayed on its loading
+indicator at 30%. Unplugging and replugging the keyboard brought it back. The screen then showed a
+mix of the interrupted animation and the previous 60-frame GIF, in an order that did not match
+either.
+
+Conclusion: `04 F0` does not abort an animation once the announce is accepted. The firmware stays
+in its loading state until power is removed, and the frames already written stay in the buffer.
+Cancel was removed from the animation card; the page now sends every block and commits, and the
+card tells the user to let it finish.

@@ -291,7 +291,7 @@ describe('TransferService screen', () => {
     expect(bytes(transport.sent.at(-1) ?? new Uint8Array())).toEqual([0x04, 0x02]);
   });
 
-  it('aborts and skips the commit when a block is refused', async () => {
+  it('stops and skips the commit when a block is refused', async () => {
     const { service, transport, output } = makeService(
       [reply(0x18, 0x01), reply(0x72, 0x01)],
       true,
@@ -302,8 +302,7 @@ describe('TransferService screen', () => {
 
     expect(result.steps.map((step) => step.step)).toEqual(['begin', 'announce', 'aborted']);
     expect(isTransportFailed(result.steps)).toBe(true);
-    expect(transport.sent).toHaveLength(3);
-    expect(bytes(transport.sent.at(-1) ?? new Uint8Array())).toEqual([0x04, 0xf0]);
+    expect(transport.sent).toHaveLength(2);
     expect(output?.sent).toHaveLength(3);
   });
 
@@ -336,33 +335,5 @@ describe('TransferService screen', () => {
     expect(announce[8]).toBe(0);
     expect(announce[9]).toBe(1);
     expect(output?.sent).toHaveLength(256);
-  });
-
-  it('stops before the first block when the signal is already aborted', async () => {
-    const controller = new AbortController();
-    controller.abort();
-    const { service, transport, output } = makeService(screenReplies(), true);
-
-    const result = await service.sendAnimation(payload, { signal: controller.signal });
-
-    expect(result.steps.map((step) => step.step)).toEqual(['begin', 'announce', 'cancelled']);
-    expect(bytes(transport.sent.at(-1) ?? new Uint8Array())).toEqual([0x04, 0xf0]);
-    expect(output?.sent).toHaveLength(0);
-  });
-
-  it('stops between blocks when cancelled mid-upload', async () => {
-    const controller = new AbortController();
-    const { service, transport, output } = makeService(screenReplies(), true);
-
-    const result = await service.sendAnimation(payload, {
-      signal: controller.signal,
-      onProgress: (sent) => {
-        if (sent === 3) controller.abort();
-      },
-    });
-
-    expect(result.steps.at(-1)?.step).toBe('cancelled');
-    expect(output?.sent).toHaveLength(3);
-    expect(bytes(transport.sent.at(-1) ?? new Uint8Array())).toEqual([0x04, 0xf0]);
   });
 });

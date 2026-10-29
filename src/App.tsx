@@ -69,7 +69,6 @@ export function App() {
     readonly sent: number;
     readonly total: number;
   } | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
 
   const transfer = useMemo(() => {
     if (!device.device || !device.configFound) return null;
@@ -274,14 +273,11 @@ export function App() {
       setAnimationProgress(null);
       setAnimationSending(true);
 
-      const controller = new AbortController();
-      abortRef.current = controller;
       let sentBlocks = 0;
 
       try {
         const payload = buildAnimationPayload({ frames, delaysMs: delays });
         const result = await transfer.sendAnimation(payload, {
-          signal: controller.signal,
           onProgress: (sent, total) => {
             sentBlocks = sent;
             setAnimationProgress({ sent, total });
@@ -293,20 +289,11 @@ export function App() {
           return;
         }
 
-        if (result.steps.some((step) => step.step === 'cancelled')) {
+        if (isTransportFailed(result.steps)) {
           const done = Math.max(0, Math.floor((sentBlocks - 1) / 8));
           setAnimationStatus({
             kind: 'err',
-            message: `Stopped after ${done} of ${frames.length} frames. The screen may show part of the animation.`,
-          });
-          log('Screen upload cancelled. The screen may hold part of the animation.', 'warn');
-          return;
-        }
-
-        if (isTransportFailed(result.steps)) {
-          setAnimationStatus({
-            kind: 'err',
-            message: 'The upload stopped before the commit. The screen may show part of it.',
+            message: `The upload stopped after ${done} of ${frames.length} frames. Unplug and replug the keyboard if it stops responding, then send the animation again.`,
           });
           log('The screen upload stopped early. The commit was not sent.', 'err');
           return;
@@ -336,11 +323,11 @@ export function App() {
         const message = error instanceof Error ? error.message : String(error);
         setAnimationStatus({
           kind: 'err',
-          message: 'The animation could not be sent. Nothing changed.',
+          message:
+            'The upload stopped unexpectedly. If the keyboard stops responding, unplug and replug it, then send the animation again.',
         });
         log(`Screen upload failed: ${message}`, 'err');
       } finally {
-        abortRef.current = null;
         setAnimationSending(false);
         setAnimationProgress(null);
         busyRef.current = false;
@@ -349,10 +336,6 @@ export function App() {
     },
     [log, transfer],
   );
-
-  const handleCancelAnimation = useCallback(() => {
-    abortRef.current?.abort();
-  }, []);
 
   const handleOpenAdvanced = useCallback(() => {
     if (!connected || busyRef.current) return;
@@ -461,7 +444,6 @@ export function App() {
               animationSending={animationSending}
               onSend={handleSendTime}
               onSendAnimation={handleSendAnimation}
-              onCancelAnimation={handleCancelAnimation}
             />
           )}
         </div>

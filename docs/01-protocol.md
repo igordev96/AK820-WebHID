@@ -354,6 +354,12 @@ Still unknown:
 - what `mode 3` selects, and whether other modes exist;
 - whether the device reads the header or only the frames;
 - whether the trailing padding must be sent;
-- the behaviour with one frame, and what a cancelled upload leaves on the screen.
+- the behaviour with one frame beyond the successful single-image upload.
+
+**Do not interrupt an upload.** Once the announce is accepted, the firmware enters a loading state
+and expects every block. `04 F0` does not end it: the keyboard stops responding, every key is dead
+and the screen stays on its loading indicator until the keyboard is unplugged. The frames already
+written stay, so the next animation starts from a mixed buffer. An interrupted upload is not a
+cancel; it is a crash the user has to power-cycle out of.
 
 

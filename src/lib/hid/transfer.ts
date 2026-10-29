@@ -34,7 +34,6 @@ export type TransferStep =
   | { readonly step: 'blocks'; readonly reply: TransferReply }
   | { readonly step: 'commit'; readonly reply: TransferReply }
   | { readonly step: 'end'; readonly reply: TransferReply }
-  | { readonly step: 'cancelled'; readonly reply: TransferReply }
   | { readonly step: 'aborted'; readonly reply: TransferReply };
 
 export type TransferResult = {
@@ -56,7 +55,6 @@ export type OutputTransport = {
 
 export type AnimationOptions = {
   readonly onProgress?: (sentBlocks: number, totalBlocks: number) => void;
-  readonly signal?: AbortSignal;
 };
 
 const errorMessage = (error: unknown): string =>
@@ -221,20 +219,9 @@ export class TransferService {
     await this.clock.sleep(TIMING.screenStartPause);
 
     const started = this.clock.now();
-    const cancelled = (): TransferStep => ({
-      step: 'cancelled',
-      reply: { status: null, raw: null, ms: Math.round(this.clock.now() - started) },
-    });
 
     try {
       for (let index = 0; index < blocks; index += 1) {
-        if (options.signal?.aborted) {
-          this.log('  cancelled by the user — sending 04 F0', 'warn');
-          await this.abort();
-          steps.push(cancelled());
-          return steps;
-        }
-
         await output.sendOutput(
           payload.subarray(index * SCREEN_BLOCK_SIZE, (index + 1) * SCREEN_BLOCK_SIZE),
         );
@@ -250,7 +237,6 @@ export class TransferService {
       }
     } catch (error) {
       this.log(`  the screen stopped accepting data: ${errorMessage(error)}`, 'err');
-      await this.abort();
       steps.push({
         step: 'aborted',
         reply: { status: null, raw: null, ms: Math.round(this.clock.now() - started) },

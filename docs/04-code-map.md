@@ -152,8 +152,9 @@ is never started by connecting or by switching views; it needs the **Send time**
 
 `AnimationCard` sits under the clock card. It decodes a GIF with the browser's `ImageDecoder`
 (`src/lib/screen/decode.ts`), composites each frame to 128 × 128, converts it to RGB565 and keeps
-the delays. The file never leaves the page. Uploads show block progress and can be cancelled; the
-card is disabled when WebHID did not return the `0xFF68` interface.
+the delays. The file never leaves the page. Uploads show block progress; there is no cancel,
+because the firmware cannot abort a stream it has started. The card is disabled when WebHID did not
+return the `0xFF68` interface.
 
 `AdvancedDrawer` holds four tabs: diagnostics, deep probe, mailbox and raw command. It takes a
 `clock` prop, which is the real clock in the app and a fake clock in tests. Probes report through
@@ -221,6 +222,9 @@ All five must pass before a commit.
 13. **The animation block count is 16 bits.** `announce[8]` is the low byte and `announce[9]` the
     high byte. Truncating it makes the firmware expect a shorter upload, accept the frames anyway
     and reject the commit, which leaves a mix of old and new frames on the screen.
+14. **An animation upload is never interrupted.** Once the announce is accepted, the firmware
+    expects every block. `04 F0` does not abort it, the keyboard stops responding until replug, and
+    the frames already written stay. No cancel button, no signal, no timeout.
 
 ## 9. Common changes
 

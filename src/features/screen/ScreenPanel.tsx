@@ -13,7 +13,6 @@ type ScreenPanelProps = {
   animationSending: boolean;
   onSend: (at: Date) => void;
   onSendAnimation: (frames: Uint8Array[], delays: number[]) => void;
-  onCancelAnimation: () => void;
 };
 
 export function ScreenPanel({
@@ -26,7 +25,6 @@ export function ScreenPanel({
   animationSending,
   onSend,
   onSendAnimation,
-  onCancelAnimation,
 }: ScreenPanelProps) {
   const [mode, setMode] = useState<ClockMode>('now');
   const [now, setNow] = useState(() => new Date());
@@ -79,7 +77,6 @@ export function ScreenPanel({
           status={animationStatus}
           progress={animationProgress}
           onSend={onSendAnimation}
-          onCancel={onCancelAnimation}
         />
       </div>
     </>

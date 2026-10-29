@@ -31,7 +31,6 @@ type AnimationCardProps = {
   status: ScreenStatus;
   progress: { readonly sent: number; readonly total: number } | null;
   onSend: (frames: Uint8Array[], delays: number[]) => void;
-  onCancel: () => void;
 };
 
 const stillDelay = 100;
@@ -75,7 +74,6 @@ export function AnimationCard({
   status,
   progress,
   onSend,
-  onCancel,
 }: AnimationCardProps) {
   const [picked, setPicked] = useState<Picked | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -187,12 +185,12 @@ export function AnimationCard({
         >
           {sending ? 'Sending…' : 'Send animation'}
         </Button>
-        {sending ? (
-          <Button variant="ghost" size="sm" onClick={onCancel}>
-            Cancel
-          </Button>
-        ) : null}
       </div>
+
+      <p className="mt-2 text-[11px] leading-relaxed text-muted">
+        Let it finish. The keyboard is busy until the commit, and interrupting an upload can leave
+        the screen stuck until you unplug it.
+      </p>
 
       {progress ? (
         <div className="mt-3">

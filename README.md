@@ -24,7 +24,8 @@ fake device, and hardware Test 9 passed on 29 Oct 2026: top layer, Fn media over
 actions and the upload lock were checked on the board. The screen clock was added the same day and
 confirmed on the board in Test 10, for both this computer's time and a time picked by hand. Test 11
 added the screen data channel with one 128 × 128 picture, Test 12 played a 31-frame GIF, and Test 13
-played a 60-frame GIF after the 16-bit block count was fixed.
+played a 60-frame GIF after the 16-bit block count was fixed. Test 14 showed that interrupting an
+upload wedges the keyboard until it is unplugged, so the animation card has no cancel.
 [docs/02-hardware-tests.md](docs/02-hardware-tests.md) records the evidence.
 
 ## What it does
@@ -121,7 +122,11 @@ scaled to 128 × 128 in the browser and sent with their own delays, clamped to 3
 keyboard holds at most 140 frames; longer GIFs use the first 140 and the card says so.
 
 The upload takes about 50 seconds for 30 frames and about four minutes for 140, so the card shows a
-progress bar and a **Cancel** button. A picture never leaves the page.
+progress bar. A picture never leaves the page.
+
+Let an upload finish. The keyboard is busy until the commit, and interrupting one leaves the screen
+stuck on its loading indicator until you unplug the keyboard; the frames already sent stay on the
+screen after the replug. There is no safe cancel for this channel.
 
 This replaces the animation on the keyboard, which this tool cannot read back. The vendor app can
 put the stock animation back.
@@ -146,6 +151,9 @@ Undo a whole layer with **Restore factory map** or **Clear all Fn overrides**.
 
 If the screen clock drifts, send it again from **Screen**. Opening the vendor app also sets the
 clock, because it does that whenever it starts with the keyboard connected.
+
+If you interrupt a screen upload, unplug the keyboard and plug it back in. The screen may show a mix
+of the old and new animation; send the animation again to replace it.
 
 If you want the stock animation back, import the vendor's `0.gif` in the vendor app and upload it
 there. This tool cannot read what is on the screen, so it cannot save the current animation for

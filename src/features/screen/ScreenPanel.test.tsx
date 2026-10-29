@@ -15,7 +15,6 @@ const renderPanel = (onSend = vi.fn()) =>
       animationSending={false}
       onSend={onSend}
       onSendAnimation={vi.fn()}
-      onCancelAnimation={vi.fn()}
     />,
   );
 
