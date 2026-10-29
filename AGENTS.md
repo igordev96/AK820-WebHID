@@ -127,13 +127,15 @@ Never claim "works" from a `0x01` commit. Keep `docs/02-hardware-tests.md` factu
 
 ## Refactor state
 
-Phases 1 to 7 are complete on `refactor/react`, based on tag `v1.0.1`. `main` still holds the v1
-release. The toolchain, keymap, HID transport and transfer service, editor state/persistence, the
-React editor, the advanced drawer, the visual pass and the v2 documentation are in place.
-Connection, editing, upload, restore, the log drawer, diagnostics, the deep probe, the mailbox
-probe, the raw command card and the responsive board are wired against the fake device.
+Phases 1 to 8 are complete on `refactor/react`, based on tag `v1.0.1`. `v2.0.0` is tagged on this
+branch. `main` still holds the v1 release; merging to `main` and the Netlify deploy are pending.
 
-Hardware Test 9 passed on 29 Oct 2026. Next is the `v2.0.0` tag.
+The toolchain, keymap, HID transport and transfer service, editor state/persistence, the React
+editor, the advanced drawer, the visual pass and the v2 documentation are in place. Connection,
+editing, upload, restore, the log drawer, diagnostics, the deep probe, the mailbox probe, the raw
+command card and the responsive board are wired, and Test 9 passed on the board.
+
+Hardware Test 9 passed on 29 Oct 2026. The `v2.0.0` tag is on this branch.
 
 The v1 `serve.js`, `start.cmd` and `tools/` JavaScript harnesses are gone; their last copy is in
 the `v1.0.1` tag. The npm scripts are the only check path. The root `index.html` is the Vite entry,
