@@ -11,14 +11,15 @@ index.html               Vite entry, mounts /src/main.tsx
 src/main.tsx             React root, fonts and global styles
 src/App.tsx              page composition, upload and restore, drawer state
 src/styles/globals.css   colour, type and radius tokens, bench mat, base styles
-src/components/ui/       Button (shadcn pattern over Radix Slot)
+src/components/ui/       Button, Popover, Calendar (shadcn patterns over Radix)
 src/lib/keymap/          constants, factory keys, record encoding, names, parsing, table
-src/lib/hid/             protocol, client, collections, WebHID types, transfer, probes, raw
+src/lib/hid/             protocol, client, collections, WebHID types, transfer, time, probes, raw
 src/lib/editor/          row state, reducer, validation, persistence
 src/lib/clock.ts         Clock type and the real timer
 src/lib/format.ts        hex formatting
-src/features/device/     useDevice, AppHeader
+src/features/device/     useDevice, AppHeader, ViewTabs
 src/features/editor/     LayerTabs, KeymapBoard, KeyInspector, PendingBar, WriteRules, keyLabels
+src/features/screen/     ScreenPanel, ScreenPreview, ClockCard, DateTimePicker
 src/features/log/        useLog, LogPanel
 src/features/advanced/   AdvancedDrawer
 src/test/                Vitest setup, fake HID device and fake clock
@@ -62,9 +63,19 @@ event handlers.
 where byte 1 matches the command and byte 3 is not zero. A commit `0xFF` is a firmware rejection,
 not a transport failure; `isTransportFailed` keeps the two apart.
 
-`TransferService` owns the transfer lock. A second `sendTable` call returns `{ busy: true }`
-instead of interleaving. `App` also keeps one busy flag for uploads and advanced probes, so a probe
-cannot run during an upload and an upload cannot start during a probe.
+`TransferService.sendTime` uses the same staged shape for the screen clock:
+
+```text
+04 18  →  04 28 (byte 8 = 1)  →  one 64-byte body  →  04 02
+```
+
+There is no `04 F0` after the commit, which matches the vendor app. `src/lib/hid/time.ts` builds
+the body; the layout is in `docs/01-protocol.md` §9.
+
+`TransferService` owns the transfer lock. A second `sendTable` or `sendTime` call returns
+`{ busy: true }` instead of interleaving. `App` also keeps one busy flag for uploads, clock writes
+and advanced probes, so a probe cannot run during an upload and an upload cannot start during a
+probe.
 
 ## 4. Keymap
 
@@ -128,6 +139,11 @@ The inspector mirrors the board and is the only place that edits a usage. The la
 between `top` and `fn`. The pending bar stages the upload, and the restore confirmation lives
 beside it. The log drawer keeps every transport line.
 
+`ViewTabs` switches the workbench between the board and the screen. The screen view keeps the same
+two-column grid: the 128 × 128 preview takes the board's place, and `ClockCard` takes the
+inspector's. The card owns the Now/Custom choice, the live clock and the send status. A clock write
+is never started by connecting or by switching views; it needs the **Send time** button.
+
 `AdvancedDrawer` holds four tabs: diagnostics, deep probe, mailbox and raw command. It takes a
 `clock` prop, which is the real clock in the app and a fake clock in tests. Probes report through
 the same log and set the app busy flag through `onBusyChange`.
@@ -143,7 +159,8 @@ the same log and set the app busy flag through `onBusyChange`.
 | `src/lib/keymap/names.test.ts` | labels, hex fallback, token parsing |
 | `src/lib/hid/protocol.test.ts` | product ids, commands, frame padding |
 | `src/lib/hid/client.test.ts` | feature send/read, timeout and errors |
-| `src/lib/hid/transfer.test.ts` | the full sequence, abort paths, busy lock, byte order |
+| `src/lib/hid/transfer.test.ts` | the full sequence, abort paths, busy lock, byte order, clock |
+| `src/lib/hid/time.test.ts` | clock body, year offset, weekday, input parser |
 | `src/lib/hid/collections.test.ts` | flattening and config collection lookup |
 | `src/lib/hid/diagnostics.test.ts` | pass, refused write, silent read, missing collection |
 | `src/lib/hid/deepProbe.test.ts` | echo, silent device |
@@ -154,8 +171,12 @@ the same log and set the app busy flag through `onBusyChange`.
 | `src/features/device/useDevice.test.ts` | chooser, open, disconnect, no config interface |
 | `src/features/editor/*.test.tsx` | board, inspector, staging bar |
 | `src/features/advanced/AdvancedDrawer.test.tsx` | each tab, close paths, busy state |
+| `src/features/screen/ClockCard.test.tsx` | clock modes, validation, status, busy state |
+| `src/features/screen/DateTimePicker.test.tsx` | day and time selection, Now, close |
+| `src/features/screen/ScreenPanel.test.tsx` | preview, custom input, send payload |
 | `src/App.test.tsx` | offline editing, layers, log |
 | `src/App.upload.test.tsx` | fake HID end to end: connect, edit, upload, commit |
+| `src/App.screen.test.tsx` | view switch and a fake-HID clock send |
 
 The suite needs no keyboard. `src/test/hidFakes.ts` provides `FakeClock` and `FakeTransport`, and
 the app tests install a fake `navigator.hid`.
@@ -178,6 +199,8 @@ All five must pass before a commit.
    The raw token for media is `c:0x…`.
 10. **No HID writes in render or `useEffect`.** StrictMode double-invokes effects, and a double
     upload is a hardware failure.
+11. **The screen clock shares the transfer lock.** It stages one 64-byte chunk, commits, and sends
+    no end command. It never touches the key table, and it is never written on connect.
 
 ## 9. Common changes
 

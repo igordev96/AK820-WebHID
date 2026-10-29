@@ -2,6 +2,7 @@ import { FACTORY_KEYS, buildTable } from '@/lib/keymap';
 import type { HidReadResult } from '@/lib/hid/client';
 import { FakeClock, FakeTransport, reply } from '@/test/hidFakes';
 import { describe, expect, it } from 'vitest';
+import { buildTimePacket } from './time';
 import { TransferService, isTransportFailed } from './transfer';
 
 const table = buildTable(FACTORY_KEYS);
@@ -157,5 +158,75 @@ describe('TransferService', () => {
     const { service } = makeService();
 
     await expect(service.sendTable(new Uint8Array(575), 'top')).rejects.toThrow('576');
+  });
+});
+
+const timeReplies = (): HidReadResult[] => [
+  reply(0x18, 0x01),
+  reply(0x28, 0x01),
+  reply(0x02, 0x01),
+];
+
+describe('TransferService clock', () => {
+  const at = new Date(2026, 9, 29, 20, 40, 26);
+  const packet = buildTimePacket(at);
+
+  it('sends begin, one 04 28 chunk and commit, with no end command', async () => {
+    const { service, transport } = makeService(timeReplies());
+
+    const result = await service.sendTime(at);
+
+    expect(result.steps.map((step) => step.step)).toEqual(['begin', 'announce', 'commit']);
+    expect(isTransportFailed(result.steps)).toBe(false);
+    expect(transport.sent).toHaveLength(4);
+
+    expect(bytes(transport.sent[0] ?? new Uint8Array())).toEqual([0x04, 0x18]);
+
+    const announce = transport.sent[1] ?? new Uint8Array();
+    expect(announce).toHaveLength(64);
+    expect(bytes(announce.subarray(0, 2))).toEqual([0x04, 0x28]);
+    expect(announce[8]).toBe(1);
+
+    expect(bytes(transport.sent[2] ?? new Uint8Array())).toEqual(bytes(packet));
+    expect(bytes(transport.sent[3] ?? new Uint8Array())).toEqual([0x04, 0x02]);
+  });
+
+  it('shares the lock with a table transfer', async () => {
+    const { service, transport } = makeService(timeReplies());
+
+    const first = service.sendTable(table, 'top');
+    const second = await service.sendTime(at);
+    await first;
+
+    expect(second).toEqual({ steps: [], busy: true });
+    expect(service.isBusy).toBe(false);
+    expect(transport.sent.some((payload) => payload[0] === 0x04 && payload[1] === 0x28)).toBe(
+      false,
+    );
+  });
+
+  it('aborts without staging when begin is refused', async () => {
+    const { service, transport } = makeService([reply(0x18, 0xff)]);
+
+    const result = await service.sendTime(at);
+
+    expect(result.steps.map((step) => step.step)).toEqual(['begin', 'aborted']);
+    expect(isTransportFailed(result.steps)).toBe(true);
+    expect(bytes(transport.sent[1] ?? new Uint8Array())).toEqual([0x04, 0xf0]);
+  });
+
+  it('stops after a rejected commit and sends no end command', async () => {
+    const { service, transport } = makeService([
+      reply(0x18, 0x01),
+      reply(0x28, 0x01),
+      reply(0x02, 0xff),
+    ]);
+
+    const result = await service.sendTime(at);
+
+    expect(result.steps.at(-1)?.step).toBe('commit');
+    expect(result.steps.at(-1)?.reply.status).toBe(0xff);
+    expect(transport.sent).toHaveLength(4);
+    expect(bytes(transport.sent.at(-1) ?? new Uint8Array())).toEqual([0x04, 0x02]);
   });
 });

@@ -14,11 +14,19 @@ export const COMMANDS = {
   begin: [0x04, 0x18],
   top: [0x04, 0x11],
   fn: [0x04, 0x27],
+  time: [0x04, 0x28],
   commit: [0x04, 0x02],
   end: [0x04, 0xf0],
   read: [0x04, 0x19],
   version: [0x04, 0xf5],
 } as const;
+
+/** Screen slot byte the vendor app sends with a clock sync (GetCurSel + 1). */
+export const TIME_SLOT = 1;
+/** Tag that marks the 64-byte body as a clock update. */
+export const TIME_TAG = 0x5a;
+export const TIME_YEAR_MIN = 2000;
+export const TIME_YEAR_MAX = 2099;
 
 export const TIMING = {
   settle: 220,

@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useReducer, useRef, useState } from 'react';
 import { AdvancedDrawer } from '@/features/advanced/AdvancedDrawer';
 import { AppHeader } from '@/features/device/AppHeader';
+import { ViewTabs, type View } from '@/features/device/ViewTabs';
 import { useDevice } from '@/features/device/useDevice';
 import { KeyInspector } from '@/features/editor/KeyInspector';
 import { KeymapBoard } from '@/features/editor/KeymapBoard';
@@ -9,6 +10,8 @@ import { PendingBar } from '@/features/editor/PendingBar';
 import { WriteRules } from '@/features/editor/WriteRules';
 import { LogPanel } from '@/features/log/LogPanel';
 import { useLog } from '@/features/log/useLog';
+import { ScreenPanel } from '@/features/screen/ScreenPanel';
+import type { TimeStatus } from '@/features/screen/ClockCard';
 import { realClock } from '@/lib/clock';
 import {
   createInitialState,
@@ -25,8 +28,9 @@ import {
   type StorageLike,
 } from '@/lib/editor';
 import { hex } from '@/lib/format';
-import { HidClient, STATUS, TransferService, isTransportFailed } from '@/lib/hid';
+import { HidClient, STATUS, TransferService, formatClock, isTransportFailed } from '@/lib/hid';
 import { FN_LOCKED, buildTable } from '@/lib/keymap';
+import { cn } from '@/lib/utils';
 
 function loadInitialState(storage: StorageLike | null): EditorState {
   if (!storage) return createInitialState();
@@ -55,6 +59,8 @@ export function App() {
   const [confirming, setConfirming] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
+  const [view, setView] = useState<View>('keys');
+  const [timeStatus, setTimeStatus] = useState<TimeStatus>({ kind: 'idle' });
 
   const transfer = useMemo(() => {
     if (!device.device || !device.configFound) return null;
@@ -182,6 +188,67 @@ export function App() {
 
   const handleCancelRestore = useCallback(() => setConfirming(false), []);
 
+  const handleSendTime = useCallback(
+    async (at: Date) => {
+      if (!transfer) {
+        log('Connect the keyboard first.', 'warn');
+        return;
+      }
+      if (busyRef.current) return;
+
+      busyRef.current = true;
+      setBusy(true);
+      setTimeStatus({ kind: 'idle' });
+
+      try {
+        const result = await transfer.sendTime(at);
+
+        if (result.busy) {
+          log('A transfer is already running.', 'warn');
+          return;
+        }
+
+        if (isTransportFailed(result.steps)) {
+          setTimeStatus({
+            kind: 'err',
+            message: 'The keyboard refused the time. Nothing changed.',
+          });
+          log('The keyboard refused the time. Nothing changed.', 'err');
+          return;
+        }
+
+        const commit = result.steps.find((step) => step.step === 'commit');
+        const status = commit?.reply.status ?? null;
+
+        if (status === STATUS.ok) {
+          setTimeStatus({ kind: 'ok', at });
+          log(`Time sent. The screen clock is set to ${formatClock(at)}.`, 'ok');
+          return;
+        }
+
+        setTimeStatus({
+          kind: 'err',
+          message:
+            status === null
+              ? 'No reply from the keyboard. Nothing changed.'
+              : 'The keyboard refused the time. Nothing changed.',
+        });
+        log(
+          `Time rejected (${status === null ? 'no reply' : `0x${hex([status])}`}). Nothing changed.`,
+          'err',
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setTimeStatus({ kind: 'err', message: 'The time could not be sent. Nothing changed.' });
+        log(`Time failed: ${message}`, 'err');
+      } finally {
+        busyRef.current = false;
+        setBusy(false);
+      }
+    },
+    [log, transfer],
+  );
+
   const handleOpenAdvanced = useCallback(() => {
     if (!connected || busyRef.current) return;
     setAdvancedOpen(true);
@@ -230,40 +297,62 @@ export function App() {
         </div>
       ) : null}
 
-      <main className="mx-auto grid w-full max-w-[1320px] flex-1 content-start gap-5 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <section className="flex min-w-0 flex-col gap-4">
-          <LayerTabs layer={state.layer} disabled={busy} onChange={handleLayer} />
-          <KeymapBoard
-            rows={rows}
-            layer={state.layer}
-            selected={state.selected}
-            disabled={busy}
-            onSelect={handleSelect}
-          />
-          <PendingBar
-            layer={state.layer}
-            pendingCount={pendingCount}
-            connected={connected}
-            busy={busy}
-            confirming={confirming}
-            onUpload={handleUpload}
-            onRestore={handleRestore}
-            onConfirmRestore={handleConfirmRestore}
-            onCancelRestore={handleCancelRestore}
-          />
-        </section>
+      <main className="mx-auto w-full max-w-[1320px] flex-1 px-4 py-6">
+        <ViewTabs view={view} disabled={busy} onChange={setView} />
 
-        <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
-          <KeyInspector
-            row={selectedRow}
-            layer={state.layer}
-            locked={locked}
-            disabled={busy}
-            onUsage={handleUsage}
-            onReset={handleReset}
-            onInvalid={(message) => log(message, 'warn')}
-          />
-          <WriteRules />
+        <div
+          className={cn(
+            'mt-5 grid content-start gap-5',
+            view === 'keys'
+              ? 'lg:grid-cols-[minmax(0,1fr)_340px]'
+              : 'lg:grid-cols-[minmax(0,440px)_340px] lg:justify-center',
+          )}
+        >
+          {view === 'keys' ? (
+            <>
+              <section className="flex min-w-0 flex-col gap-4">
+                <LayerTabs layer={state.layer} disabled={busy} onChange={handleLayer} />
+                <KeymapBoard
+                  rows={rows}
+                  layer={state.layer}
+                  selected={state.selected}
+                  disabled={busy}
+                  onSelect={handleSelect}
+                />
+                <PendingBar
+                  layer={state.layer}
+                  pendingCount={pendingCount}
+                  connected={connected}
+                  busy={busy}
+                  confirming={confirming}
+                  onUpload={handleUpload}
+                  onRestore={handleRestore}
+                  onConfirmRestore={handleConfirmRestore}
+                  onCancelRestore={handleCancelRestore}
+                />
+              </section>
+
+              <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
+                <KeyInspector
+                  row={selectedRow}
+                  layer={state.layer}
+                  locked={locked}
+                  disabled={busy}
+                  onUsage={handleUsage}
+                  onReset={handleReset}
+                  onInvalid={(message) => log(message, 'warn')}
+                />
+                <WriteRules />
+              </div>
+            </>
+          ) : (
+            <ScreenPanel
+              connected={connected}
+              busy={busy}
+              status={timeStatus}
+              onSend={handleSendTime}
+            />
+          )}
         </div>
       </main>
 

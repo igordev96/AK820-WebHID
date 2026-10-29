@@ -13,6 +13,10 @@ export {
   REPORT_SIZE,
   STATUS,
   TIMING,
+  TIME_SLOT,
+  TIME_TAG,
+  TIME_YEAR_MAX,
+  TIME_YEAR_MIN,
   VENDOR_ID,
   padFrame,
 } from './protocol';
@@ -25,6 +29,7 @@ export type {
   TransferResult,
   TransferStep,
 } from './transfer';
+export { buildTimePacket, formatClock, formatTimeInput, parseTimeInput } from './time';
 export { buildWebHidFilters, getWebHid, pickDevice } from './webhid';
 export type { WebHid, WebHidCollection, WebHidDevice, WebHidFilter } from './webhid';
 export { diagnose } from './diagnostics';

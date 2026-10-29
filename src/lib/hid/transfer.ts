@@ -3,7 +3,8 @@ import { realClock } from '@/lib/clock';
 import { hex } from '@/lib/format';
 import { TABLE_SIZE } from '@/lib/keymap';
 import type { HidTransport } from './client';
-import { CHUNK_COUNT, CHUNK_SIZE, COMMANDS, padFrame, STATUS, TIMING } from './protocol';
+import { CHUNK_COUNT, CHUNK_SIZE, COMMANDS, padFrame, STATUS, TIME_SLOT, TIMING } from './protocol';
+import { buildTimePacket } from './time';
 
 export type HidLayer = 'top' | 'fn';
 
@@ -27,6 +28,13 @@ export type TransferStep =
 export type TransferResult = {
   readonly steps: TransferStep[];
   readonly busy?: boolean;
+};
+
+type Sequence = {
+  readonly announce: readonly number[];
+  readonly body: Uint8Array;
+  readonly chunkCount: number;
+  readonly sendEnd: boolean;
 };
 
 const errorMessage = (error: unknown): string =>
@@ -59,16 +67,52 @@ export class TransferService {
 
     this.busy = true;
     try {
-      return { steps: await this.run(table, layer) };
+      return {
+        steps: await this.runSequence({
+          announce: layer === 'fn' ? COMMANDS.fn : COMMANDS.top,
+          body: table,
+          chunkCount: CHUNK_COUNT,
+          sendEnd: true,
+        }),
+      };
     } finally {
       this.busy = false;
     }
   }
 
-  private async run(table: Uint8Array, layer: HidLayer): Promise<TransferStep[]> {
+  /**
+   * Sets the screen clock. The vendor app uses the same staged shape as a table
+   * write, one 64-byte chunk and no end command:
+   *
+   *   04 18  →  04 28 (byte 8 = 1)  →  one 64-byte body  →  04 02
+   */
+  async sendTime(at: Date, slot: number = TIME_SLOT): Promise<TransferResult> {
+    const body = buildTimePacket(at, slot);
+
+    if (this.busy) {
+      this.log('a transfer is already running — ignoring this request', 'warn');
+      return { steps: [], busy: true };
+    }
+
+    this.busy = true;
+    try {
+      return {
+        steps: await this.runSequence({
+          announce: COMMANDS.time,
+          body,
+          chunkCount: 1,
+          sendEnd: false,
+        }),
+      };
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  private async runSequence(sequence: Sequence): Promise<TransferStep[]> {
     const steps: TransferStep[] = [];
-    const layerCommand = layer === 'fn' ? COMMANDS.fn : COMMANDS.top;
-    const layerByte = layerCommand[1];
+    const { body, chunkCount } = sequence;
+    const layerByte = sequence.announce[1];
 
     await this.send(Uint8Array.from(COMMANDS.begin));
     const begin = await this.waitReply(COMMANDS.begin[1], 'begin 04 18');
@@ -89,8 +133,8 @@ export class TransferService {
       return steps;
     }
 
-    const announce = padFrame(Uint8Array.from([0x04, layerByte]));
-    announce[8] = CHUNK_COUNT;
+    const announce = padFrame(Uint8Array.from(sequence.announce));
+    announce[8] = chunkCount;
     this.log(`SEND  ${hex(announce)}`, 'info');
     await this.transport.send(announce);
 
@@ -115,8 +159,8 @@ export class TransferService {
     await this.clock.sleep(TIMING.announcePause);
 
     const chunksStart = this.clock.now();
-    for (let index = 0; index < CHUNK_COUNT; index += 1) {
-      const frame = table.subarray(index * CHUNK_SIZE, (index + 1) * CHUNK_SIZE);
+    for (let index = 0; index < chunkCount; index += 1) {
+      const frame = body.subarray(index * CHUNK_SIZE, (index + 1) * CHUNK_SIZE);
       let sent = false;
 
       for (let attempt = 1; attempt <= TIMING.chunkAttempts; attempt += 1) {
@@ -125,7 +169,7 @@ export class TransferService {
           await this.transport.send(frame);
           const ms = Math.round(this.clock.now() - started);
           this.log(
-            `  chunk ${index + 1}/${CHUNK_COUNT} ok in ${ms} ms${
+            `  chunk ${index + 1}/${chunkCount} ok in ${ms} ms${
               attempt > 1 ? ` (attempt ${attempt})` : ''
             }  ${hex(frame.subarray(0, 4))}`,
             attempt > 1 ? 'ok' : 'dim',
@@ -135,7 +179,7 @@ export class TransferService {
         } catch (error) {
           const ms = Math.round(this.clock.now() - started);
           this.log(
-            `  chunk ${index + 1}/${CHUNK_COUNT} attempt ${attempt}/${TIMING.chunkAttempts} FAILED after ${ms} ms: ${errorMessage(
+            `  chunk ${index + 1}/${chunkCount} attempt ${attempt}/${TIMING.chunkAttempts} FAILED after ${ms} ms: ${errorMessage(
               error,
             )}  ${hex(frame.subarray(0, 4))}`,
             'warn',
@@ -161,11 +205,11 @@ export class TransferService {
         return steps;
       }
 
-      if (index < CHUNK_COUNT - 1) await this.clock.sleep(TIMING.chunkGap);
+      if (index < chunkCount - 1) await this.clock.sleep(TIMING.chunkGap);
     }
 
     this.log(
-      `SENT  ${CHUNK_COUNT} x ${CHUNK_SIZE}-byte chunks (${table.length} bytes) in ${Math.round(
+      `SENT  ${chunkCount} x ${CHUNK_SIZE}-byte chunks (${body.length} bytes) in ${Math.round(
         this.clock.now() - chunksStart,
       )} ms`,
       'dim',
@@ -175,9 +219,11 @@ export class TransferService {
     const commit = await this.waitReply(COMMANDS.commit[1], 'commit 04 02');
     steps.push({ step: 'commit', reply: commit });
 
-    await this.send(Uint8Array.from(COMMANDS.end));
-    const end = await this.waitReply(COMMANDS.end[1], 'end 04 F0');
-    steps.push({ step: 'end', reply: end });
+    if (sequence.sendEnd) {
+      await this.send(Uint8Array.from(COMMANDS.end));
+      const end = await this.waitReply(COMMANDS.end[1], 'end 04 F0');
+      steps.push({ step: 'end', reply: end });
+    }
 
     return steps;
   }

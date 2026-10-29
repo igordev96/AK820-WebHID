@@ -301,3 +301,29 @@ The React build writes the top layer and the Fn layer, writes and persists a med
 it, runs both restore actions and keeps one transfer at a time. Every reply was the expected
 `0x01`, and each change was confirmed by typing or by the Windows OSD at the keyboard, not by the
 mailbox alone.
+
+## Test 10 — screen clock (29 Oct 2026)
+
+Build: the working tree that added the clock, dev server on `http://localhost:5173`, Chrome on
+Windows. The keyboard was connected over USB and the vendor app was closed. The packet was first
+captured from the vendor app with a Frida hook on `HidD_SetFeature`; the layout is in
+`docs/01-protocol.md` §9.
+
+### 10A — this computer's time
+
+**Screen** tab, then **Send time**. The sequence is `04 18`, `04 28` with byte 8 = 1, the 64-byte
+body, then `04 02`. No key table is staged and no `04 F0` follows the commit.
+
+The screen showed the current time. The user confirmed it by looking at the keyboard.
+
+### 10B — a custom time
+
+The user switched to **Custom**, entered a different date and time, and sent it. The screen showed
+that value. The user then pressed **Use now** and sent again, and the screen returned to the
+current time. Both changes were confirmed by the user at the keyboard.
+
+### Test 10 conclusion
+
+The screen accepts the clock packet this page builds, for both the browser's time and a time typed
+by hand. The clock is a settings write, not a key-table write: it uses its own announce command
+and leaves the top and Fn layers untouched. Whether the clock survives a power loss was not tested.

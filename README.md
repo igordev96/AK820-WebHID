@@ -21,7 +21,8 @@ the key table, so keep the vendor application available for recovery.
 Version 2.0.0 is a Vite, React and TypeScript rewrite of the v1.0.1 single-file app. The key table,
 the transfer sequence and the wire bytes are unchanged. The new build has passed tests against a
 fake device, and hardware Test 9 passed on 29 Oct 2026: top layer, Fn media override, both restore
-actions and the upload lock were checked on the board.
+actions and the upload lock were checked on the board. The screen clock was added the same day and
+confirmed on the board in Test 10, for both this computer's time and a time picked by hand.
 [docs/02-hardware-tests.md](docs/02-hardware-tests.md) records the evidence.
 
 ## What it does
@@ -30,6 +31,7 @@ actions and the upload lock were checked on the board.
 - Sets Fn-layer overrides. Keys you leave alone keep the firmware default.
 - Assigns consumer keys: mute, volume, play/pause, track skip, browser back and forward,
   calculator and email.
+- Sets the clock on the keyboard's screen, from this computer or from a time you pick.
 - Restores the factory top map or clears every Fn override.
 - Runs diagnostics, a deep probe, a mailbox probe and raw test commands from the Advanced drawer.
 
@@ -49,6 +51,9 @@ hardware. Other AK820 variants may share the protocol, but they have not been te
 The firmware has no read-back command, so the app cannot show the layout stored on the keyboard.
 It assumes the top layer is factory and treats an all-zero Fn table as the default. Fn overrides
 are saved in this browser.
+
+The screen is write-only too: the page cannot read the clock or anything else the screen holds.
+The clock has no timezone, so it stays on the wall-clock time you sent.
 
 The knob is input-only, so it cannot be remapped. Bluetooth mode does not expose the
 configuration interface.
@@ -97,6 +102,15 @@ also keyboard Left Alt.
 layer. On the Fn layer, **Back to firmware default** clears one override and **Clear all Fn
 overrides** clears the layer.
 
+### The screen clock
+
+**Screen** opens the clock view. **Now** sends this computer's local time; **Custom** takes a date
+and time you pick. One write sets the screen clock, and no key mapping is touched.
+
+The keyboard has no timezone, so the clock follows the time you send. A daylight saving change
+later in the year will not move it. The page never sets the clock on connect; you press **Send
+time** when you want it.
+
 **Advanced** opens the diagnostics, the deep probe, the mailbox probe and a raw command card.
 These send test commands and never write a keymap. Uploads are locked while one of them runs.
 
@@ -114,6 +128,9 @@ Undo a single change with **Reset this key** on the top layer or **Back to firmw
 the Fn layer, then upload.
 
 Undo a whole layer with **Restore factory map** or **Clear all Fn overrides**.
+
+If the screen clock drifts, send it again from **Screen**. Opening the vendor app also sets the
+clock, because it does that whenever it starts with the keyboard connected.
 
 If the app refuses a transfer, it stops before staging data, so the keyboard is unchanged. Unplug
 and replug the keyboard, then try again. Close any other program that may hold the interface.

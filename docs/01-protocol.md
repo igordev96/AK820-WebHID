@@ -241,6 +241,7 @@ modifier-only). `src/lib/keymap/table.test.ts` asserts that.
 | `04 18` | open staging | status `0x01` |
 | `04 11` | announce top-layer table | byte 8 = chunk count |
 | `04 27` | announce Fn-layer table | byte 8 = chunk count |
+| `04 28` | announce a screen clock write | byte 8 = 1; see §9 |
 | `04 02` | commit staged table | validates the `AA 55` trailer |
 | `04 F0` | end / abort | also used to abandon a transfer |
 | `04 19` | generic read | used by the mailbox probes |
@@ -248,3 +249,53 @@ modifier-only). `src/lib/keymap/table.test.ts` asserts that.
 
 The LED path (`0x418CC0`) is a different encoder and is **not** the key table; do not confuse
 the two when reading the disassembly.
+
+---
+
+## 9. The screen clock
+
+The board has a 128 × 128 screen with its own clock. The vendor app sets the clock about 1.4 s
+after it opens with the keyboard connected, so there is no button to press and nothing to time a
+capture around. The packet below was captured from that startup burst with a Frida hook on
+`HidD_SetFeature` on 29 Oct 2026, then confirmed on the board (`docs/02-hardware-tests.md` Test 10).
+
+```
+SEND  04 18
+SEND  04 28 00 00 00 00 00 00 01 ...          announce, byte 8 = 1 chunk
+SEND  00 01 5A 1A 0A 1D 14 28 1A 00 04 ... AA 55
+SEND  04 02
+```
+
+No `04 F0` follows the commit.
+
+### The 64-byte body
+
+The example is 29 Oct 2026 at 20:40:26, a Thursday.
+
+| Offset | Example | Meaning |
+|---|---|---|
+| 0 | `00` | fixed |
+| 1 | `01` | screen slot; the vendor sends `GetCurSel + 1` |
+| 2 | `5A` | clock tag |
+| 3 | `1A` | year − 2000 |
+| 4 | `0A` | month, 1–12 |
+| 5 | `1D` | day |
+| 6 | `14` | hour, 0–23 |
+| 7 | `28` | minute |
+| 8 | `1A` | second |
+| 9 | `00` | fixed |
+| 10 | `04` | weekday, 0 = Sunday |
+| 11–61 | `00` | padding |
+| 62–63 | `AA 55` | trailer |
+
+### What is known and what is not
+
+- **No timezone.** The device stores wall-clock time. The vendor app sends local time and so does
+  this page, which means a daylight saving change does not move the clock.
+- **No read-back.** The clock is write-only, like everything else on this interface.
+- **Pacing.** The vendor spaces the four commands 75 ms apart and reads no reply. The page uses
+  the same 220 ms settle and 60 ms poll as a table write, so the commit status is checked.
+- **Slot byte.** It was `01` in the capture. The vendor computes it from `GetCurSel + 1`, so it may
+  pick a screen slot; what else it controls is unknown. The page always sends `1`.
+- **Power.** Whether the clock keeps running after the keyboard is unplugged was not tested.
+
