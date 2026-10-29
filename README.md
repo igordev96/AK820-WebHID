@@ -11,8 +11,9 @@ the key table, so keep the vendor application available for recovery.
 
 Version 2 is a Vite, React and TypeScript rewrite of the v1.0.1 single-file app. The key table,
 the transfer sequence and the wire bytes are unchanged. The new build has passed tests against a
-fake device; hardware Test 9 has not run yet.
-[docs/02-hardware-tests.md](docs/02-hardware-tests.md) records what has been proven on the board.
+fake device, and hardware Test 9 is in progress: the top-layer write and restore are confirmed on
+the board. The Fn and media checks are still to run.
+[docs/02-hardware-tests.md](docs/02-hardware-tests.md) records the evidence.
 
 ## What it does
 
@@ -24,8 +25,9 @@ fake device; hardware Test 9 has not run yet.
 - Runs diagnostics, a deep probe, a mailbox probe and raw test commands from the Advanced drawer.
 
 Top-layer and Fn-layer remapping and both restore actions were tested on an AK820 Pro (VID `0C45`,
-PID `8009`) with the v1 app. Media testing covered Mute, Volume up and Volume down. The other
-consumer functions use the same record format but were not each tested.
+PID `8009`) with the v1 app. The v2 build wrote and restored the top layer on 29 Oct 2026. The Fn
+and media checks on v2 are still to run. Media testing covered Mute, Volume up and Volume down.
+The other consumer functions use the same record format but were not each tested.
 
 ## Supported devices
 

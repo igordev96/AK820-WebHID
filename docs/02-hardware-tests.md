@@ -7,7 +7,7 @@ mailbox alone is not evidence (see docs/01-protocol.md §3).
 
 Tests 1 to 8 ran on the v1 single-file app. The v2 rewrite sends the same bytes in the same order;
 the byte checks now live in `src/lib/keymap/table.test.ts` and the transport checks in
-`src/lib/hid/transfer.test.ts`. Test 9 will record the React build on the board.
+`src/lib/hid/transfer.test.ts`. Test 9 records the React build on the board and is in progress.
 
 ---
 
@@ -220,3 +220,39 @@ npm run dev
    then add one override and test it.
 
 The log drawer has **Copy**. The app has no numbered cards.
+
+## Test 9 — v2 React build on the board (29 Oct 2026)
+
+Build: `refactor/react` at `220169a`, dev server on `http://localhost:5173`, Chrome on Windows.
+The board was in USB mode and the AJAZZ desktop app was closed. The user ran the app and typed at
+the keyboard.
+
+### 9A — top layer, slot 55 (CapsLock) to A
+
+Change: key 55 (CapsLock, offset 220) from `02 00 39 00` to `02 00 04 00`, inside the full
+576-byte factory table. Upload, then **Reset this key** and upload the factory table back.
+
+The log showed the same sequence twice, with every reply status `0x01`:
+
+```
+begin 04 18: status 0x01 OK  (2 ms after settle, 1 read)
+announce 04 11: status 0x01 OK  (2 ms after settle, 1 read)
+chunk 1/9 ... chunk 9/9 ok in 2–3 ms
+SENT 9 x 64-byte chunks (576 bytes) in 118 ms
+commit 04 02: status 0x01 OK  (2 ms after settle, 1 read)
+end 04 F0: status 0x01 OK  (2 ms after settle, 1 read)
+Upload accepted. The top layer is live.
+```
+
+The second run took 116 ms for the chunks, and its commit and end replies were also `0x01`.
+
+Behaviour: after the first upload, CapsLock typed `a`. After the reset upload, CapsLock toggled
+caps as before. The user confirmed both by typing.
+
+The per-chunk preview prints only the first four bytes, so the slot 55 record at offset 220 does
+not appear in the log. The byte-level check is `src/lib/keymap/table.test.ts`.
+
+Conclusion: the React build writes the top layer and restores it. The full sequence, the commit
+gate and the rollback by re-upload behave as on v1.
+
+9B (Fn layer) and 9C (restore and the upload lock) are still to run.
