@@ -9,7 +9,7 @@ the key table, so keep the vendor application available for recovery.
 
 ## Status
 
-Version 2 is a Vite, React and TypeScript rewrite of the v1.0.1 single-file app. The key table,
+Version 2.0.0 is a Vite, React and TypeScript rewrite of the v1.0.1 single-file app. The key table,
 the transfer sequence and the wire bytes are unchanged. The new build has passed tests against a
 fake device, and hardware Test 9 passed on 29 Oct 2026: top layer, Fn media override, both restore
 actions and the upload lock were checked on the board.
