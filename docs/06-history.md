@@ -64,8 +64,8 @@ WebHID won because it is the only option with zero install and a stable API for 
 13. **React rewrite (v2)** — ported the tool to Vite, React and TypeScript without changing the
     wire bytes. The keymap, HID and editor code became pure modules with Vitest coverage;
     `TransferService` kept the single-transfer lock; the editor gained a scale-to-fit board, a
-    log drawer and an Advanced drawer for diagnostics and raw commands. Hardware Test 9 is
-    pending, so the v2 build is not yet proven on the board.
+    log drawer and an Advanced drawer for diagnostics and raw commands. Hardware Test 9 passed on
+    29 Oct 2026: top layer, Fn media, both restore actions and the upload lock.
 
 ## 4. Lessons that cost time
 

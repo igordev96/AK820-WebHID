@@ -7,7 +7,7 @@ mailbox alone is not evidence (see docs/01-protocol.md §3).
 
 Tests 1 to 8 ran on the v1 single-file app. The v2 rewrite sends the same bytes in the same order;
 the byte checks now live in `src/lib/keymap/table.test.ts` and the transport checks in
-`src/lib/hid/transfer.test.ts`. Test 9 records the React build on the board and is in progress.
+`src/lib/hid/transfer.test.ts`. Test 9 records the React build on the board.
 
 ---
 
@@ -279,4 +279,25 @@ Conclusion: the React build writes the Fn layer, the firmware accepts the consum
 build, and clearing the override restores the firmware combination. Persistence works across a
 reload.
 
-9C (restore actions and the upload lock) is still to run.
+### 9C — restore actions and the upload lock
+
+Top layer: **Restore factory map** wrote the full factory table with `04 11`. The chunks took
+116 ms, and begin, announce, commit and end were all `0x01`. The keyboard kept typing normally.
+
+Fn layer: **Clear all Fn overrides** wrote the all-zero Fn table with `04 27`. The chunks took
+120 ms, and every reply was `0x01`. Fn combinations stayed stock.
+
+Lock: the top layer was set to CapsLock → A, then Upload was clicked twice in quick succession.
+The log contains one sequence for that burst, starting at `00:29:11` (begin `0x01`, 117 ms of
+chunks, commit and end `0x01`). The next top-layer sequence starts at `00:29:21`, which is the
+reset upload, ten seconds later. No second begin appeared inside the first transfer.
+
+The reset upload put the factory record back. CapsLock typed normally afterwards, and the user
+confirmed that everything worked.
+
+### Test 9 conclusion
+
+The React build writes the top layer and the Fn layer, writes and persists a media override, clears
+it, runs both restore actions and keeps one transfer at a time. Every reply was the expected
+`0x01`, and each change was confirmed by typing or by the Windows OSD at the keyboard, not by the
+mailbox alone.
