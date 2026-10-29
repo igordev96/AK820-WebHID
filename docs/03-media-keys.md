@@ -110,7 +110,8 @@ is a pending change and is reported correctly.
 
 ### Tests
 
-`tools/kmtest.js` asserts the new encoder byte for byte:
+`src/lib/keymap/table.test.ts` and `src/lib/keymap/encode.test.ts` assert the new encoder byte for
+byte:
 
 ```
 buildTable([{idx:55, usage:0xE2, media:true}])               → 03 E2 00 00
@@ -122,8 +123,8 @@ buildTable([{idx:55, usage:0xE2}])                           → 02 04 00 00 (Le
 parseMapText('55 c:0xE2') → media=true;  parseMapText('55 0xE2') → media=false
 ```
 
-`tools/editortest2.js` covers the Media optgroup, the inspector label, the dirty list, the `c:`
-token round-trip and media persistence across a reload.
+`src/features/editor/KeyInspector.test.tsx` and `src/lib/editor/persistence.test.ts` cover the Media
+optgroup, the inspector label, the `c:` token round-trip and media persistence across a reload.
 
 ---
 

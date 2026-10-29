@@ -76,7 +76,7 @@ Reply layout:
 The commit reply occasionally carries `0x77` in `byte[4]` (seen as `04 02 00 01 77`). Its
 meaning is unknown; it does not affect the verdict and was not present on every run.
 
-`index.html` implements this as `waitReply(cmd, label)`:
+`src/lib/hid/transfer.ts` implements this as `waitReply(cmd, label)`:
 settle **220 ms**, then poll every **60 ms** for up to **6 s**, accepting only a stamped frame.
 Never replace it with a single immediate read.
 
@@ -230,7 +230,7 @@ The same change on the Fn layer uses `04 27` and leaves every other slot zero â€
 `00` everywhere except `02 00 04 00` at 220 and `AA 55` at 574.
 
 The stock top-layer table has **164 non-zero bytes** (81 records, some of which are
-modifier-only). `tools/kmtest.js` asserts that.
+modifier-only). `src/lib/keymap/table.test.ts` asserts that.
 
 ---
 

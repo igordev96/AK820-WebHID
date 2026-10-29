@@ -8,9 +8,8 @@ Read these in order. The numbers match the filenames.
    the timings.
 3. [03-media-keys.md](03-media-keys.md): consumer records, the `c:` page marker and the media
    test.
-4. [04-code-map.md](04-code-map.md): how `index.html` is organised, the editor state and the test
-   markers.
-5. [05-setup.md](05-setup.md): the local server, the required checks and troubleshooting.
+4. [04-code-map.md](04-code-map.md): the module layout, state flow and test files under `src/`.
+5. [05-setup.md](05-setup.md): install, the dev server, the checks, Netlify and troubleshooting.
 6. [06-history.md](06-history.md): decisions, dead ends and lessons.
 
 [key-index-table.md](key-index-table.md) is a generated reference for key index, factory usage,

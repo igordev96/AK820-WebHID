@@ -1,6 +1,7 @@
 ﻿# Key index table (AK820 Pro, 81 physical keys)
 
-Generated from `FACTORY_KEYS` in `index.html` and the vendor layout data used to derive it.
+Generated from `FACTORY_KEYS` in `src/lib/keymap/factoryKeys.ts` and the vendor layout data used to
+derive it.
 Do not hand-edit.
 
 * keys: **81**

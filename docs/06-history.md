@@ -61,6 +61,11 @@ WebHID won because it is the only option with zero install and a stable API for 
     normalisation for project-owned text. The private lab also moved to Conventional Commits and
     stopped tracking `re/node_modules`; this public repository starts with a clean history and
     carries only the publishable driver, tests and documentation.
+13. **React rewrite (v2)** — ported the tool to Vite, React and TypeScript without changing the
+    wire bytes. The keymap, HID and editor code became pure modules with Vitest coverage;
+    `TransferService` kept the single-transfer lock; the editor gained a scale-to-fit board, a
+    log drawer and an Advanced drawer for diagnostics and raw commands. Hardware Test 9 is
+    pending, so the v2 build is not yet proven on the board.
 
 ## 4. Lessons that cost time
 
@@ -86,6 +91,9 @@ WebHID won because it is the only option with zero install and a stable API for 
 * **Right-hand modifiers use the high bits.** `0x451CA0` maps `0xE0..0xE7` to
   `1,2,4,8,16,32,64,128`, not a repeat of the left-hand values. The old prose said otherwise; the
   encoder was already correct, and the docs were fixed during the React refactor.
+* **A colour that encodes state cannot also decorate.** The first v2 build gave the Fn cap a brass
+  edge for looks, while the legend says brass means a key differs from the factory table. The first
+  question from the user was whether Fn had been remapped. Keep one meaning per visual signal.
 
 ## 5. Open threads
 
@@ -94,5 +102,5 @@ WebHID won because it is the only option with zero install and a stable API for 
 * `0x0D` record (`07 …`), internal types 5 and 8–11, macro records — undecoded, not needed.
 * Commit reply byte 4 (`0x77`) — unexplained.
 * `t_config_data.fn_layer` / `fn_switch` — unknown meaning.
-* The driver is published as a single HTML file; vendor artwork/XML and the installer are kept
-  private and are not distributed with it.
+* The driver is a Vite and React app in `src/`. Vendor artwork, layout XML and the installer stay
+  private and are not distributed.

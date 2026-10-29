@@ -1,199 +1,202 @@
-# 04 · Code map: `index.html`
+# 04 · Code map
 
-One file, no dependencies, no build step. Open it from `http://localhost:8765` (WebHID requires
-a secure context; `localhost` counts). Line numbers below drift as the file changes — the
-**section banners and marker comments** are the stable anchors.
+The app is a Vite, React and TypeScript project. `index.html` is only the Vite entry; the code
+lives in `src/`. The keymap, HID and editor modules under `src/lib` import no React, so the same
+code runs in the browser and under Vitest.
 
-```
-<head>   CSS for the page, the board (.km-*) and the layer tabs
-<body>   cards 1..6 + log
-<script> one IIFE, 'use strict'
-```
+## 1. Layout
 
----
-
-## 1. Sections
-
-| Banner / marker | What lives there |
-|---|---|
-| `/* ---------- logging ---------- */` | `ts`, `log`, `escapeHtml`, `hex`, `parseHex` |
-| `/* ---------- collection helper ---------- */` | `flatten`, `findConfigCollection` (looks for `0xFF13/0x0001`) |
-| `/* ---------- device rendering ---------- */` | `renderDevice` — the collection table in card 1 |
-| `/* ---------- sending ---------- */` | `send` (one 64-byte payload), `sendChunked` (mirrors `Device::Write`) |
-| `/* ---------- reading ---------- */` | `startInputCapture` / `stopInputCapture`, `tryFeatureRead` |
-| `/* ---------- connect ---------- */` | `connect`, `setConnected`, `disconnect` |
-| `/* ---------- diagnostics ---------- */` | `diagnose` — collection + mailbox sanity, fills card 2 |
-| `/* ---------- deep probe ---------- */` | `deepProbe`, `frame`, `sameBytes` — echo/stream experiments |
-| `/* ---------- mailbox test ---------- */` | `mailboxProbe` — proves replies are generated, not echoed |
-| `/* ---------- keymap ---------- */` | `FACTORY_KEYS`, `modBit`, `encodeRecord`, `parseMapText`, `buildTable` |
-| `/* ---------- key editor ---------- */` | state, board, inspector, dirty list, layer tabs, upload UI |
-| `/* ---------- send + listen ---------- */` | `sendAndListen` (card 4's "Send + listen") |
-| `/* ---------- wiring ---------- */` | all `addEventListener` calls, `kmInit()` at the bottom |
-
----
-
-## 2. Key functions
-
-### Transport
-
-```
-send(payload)                 payload ≤ 64 → one feature report, zero-padded
-sendChunked(payload)          > 64 → floor(len/64) bare 64-byte reports
-tryFeatureRead(timeout)       GET_FEATURE; returns { ok, bytes } or { ok:false, reason }
-waitReply(cmd, label)         220 ms settle, then poll 60 ms up to 6 s
-                              accepts only byte[1]==cmd && byte[3]!=0
-sendChunk(buf, i, chunks)     one chunk, 4 attempts, 250 ms backoff
-sendTable(buf, layerFn)       the full sequence + step list
-kmTransportFailed(steps)      chunks/aborted/begin≠0x01 → transport failure
+```text
+index.html               Vite entry, mounts /src/main.tsx
+src/main.tsx             React root, fonts and global styles
+src/App.tsx              page composition, upload and restore, drawer state
+src/styles/globals.css   colour, type and radius tokens, bench mat, base styles
+src/components/ui/       Button (shadcn pattern over Radix Slot)
+src/lib/keymap/          constants, factory keys, record encoding, names, parsing, table
+src/lib/hid/             protocol, client, collections, WebHID types, transfer, probes, raw
+src/lib/editor/          row state, reducer, validation, persistence
+src/lib/clock.ts         Clock type and the real timer
+src/lib/format.ts        hex formatting
+src/features/device/     useDevice, AppHeader
+src/features/editor/     LayerTabs, KeymapBoard, KeyInspector, PendingBar, WriteRules, keyLabels
+src/features/log/        useLog, LogPanel
+src/features/advanced/   AdvancedDrawer
+src/test/                Vitest setup, fake HID device and fake clock
 ```
 
-`sendTable` returns an array of `[stepName, { status, ms, raw }]`; the UI renders it with
-`stepTable`. A `0xFF` commit is **not** a transport failure.
+## 2. Boundaries
 
-### Table building
+`src/lib/keymap` and `src/lib/hid` are framework-free. They export functions and types; they do
+not import React or touch the DOM except through the `WebHidDevice` shape the caller supplies.
+`src/lib/editor` is also React-free: plain state, a reducer and storage.
 
-```
-modBit(usage)                 0xE0..0xE7 → 1,2,4,8,16,32,64,128
-encodeRecord(usage, media?)   → 4 bytes: 02 <mod> <usage> 00 (keyboard)
-                                         03 <lo> <hi> 00   (consumer, media=true)
-parseMapText(text)            "idx [c:]usage name" per line, # comments
-                              c: marks a consumer usage; bare = keyboard
-buildTable(entries, corruptTrailer?, layerFn?)
-                              zero-fills 576, writes at idx*4,
-                              skips usage 0 / fnlayer_disable on the Fn layer,
-                              AA 55 at 574..575
-```
+React components render and dispatch. They never call `navigator.hid`. `useDevice` owns the
+chooser, open and close, and the disconnect listener. Uploads go through `TransferService`. The
+advanced drawer calls the probe services. Both receive a transport, and writes happen only in
+event handlers.
 
-### Editor state
+## 3. Transport
 
-```
-kmTop[]      top-layer rows: { idx, usage, media, name, x,y,w,h,
-                               factory, factoryMedia, applied, appliedMedia }
-kmFn[]       Fn-layer rows:  same shape; factory = 0, factoryMedia = false,
-                             applied/appliedMedia = what we last wrote
-kmState      points at the active array (kmTop or kmFn)
-kmLayer      0 = top, 1 = Fn
-kmSel        selected key_index or null
-```
+`src/lib/hid/protocol.ts` holds the fixed values:
 
-Every row carries:
-
-* `usage` — what the editor says now
-* `media` — consumer page (record `0x03`) when true, keyboard page (record `0x02`) when false
-* `applied` / `appliedMedia` — what the keyboard is believed to run (updated only after `commit 0x01`)
-* `factory` / `factoryMedia` — top layer: the XML usage (keyboard); Fn layer: 0 / false
-
-`kmPending()` is `usage !== applied || media !== appliedMedia`; that is what the dirty list and the
-upload button show. The page is compared too, because 0xE2 Left Alt → 0xE2 Mute changes only `media`.
-
-```
-kmInit()            builds both arrays, loads persisted Fn overrides, renders
-kmSetLayer(n)       swaps kmState, clears selection, re-renders (blocked while kmBusy)
-renderLayer()       tab classes, note text, restore/reset button labels
-renderBoard()       one <button> per key, absolute-positioned from x/y/w/h;
-                    Fn layer: fnlayer_disable keys get disabled + .fnlock
-renderInspector()   name/meta, usage <select>, raw usage, controls disabled for locked keys
-renderDirty()       pending list + upload button label
-kmSetUsage(u, media?)  validates, refuses locked keys, refuses bare keyboard usages >0xE7,
-                      0 = default on the Fn layer; returns false on refusal
-kmApplyText()       pulls the textarea back into the active array
-kmMirror()          writes the textarea from the active array (c: for media)
-```
-
-`usageLabel/usageToken/usageFull` are the only place that formats a usage for the UI; they take
-the `media` flag so a value is never displayed without its page. `MEDIA_NAMES` is the picker's
-media list; `hxu()` prints 2 or 4 hex digits.
-
-### Actions
-
-```
-kmUpload() / kmUploadNow()    lock → apply text → build → sendTable → verdict → persist Fn
-kmProbe() / kmProbeNow()      A: no trailer, B: trailer → proves the firmware validates
-kmPreview()                   builds the packet, prints slot 0 + first/last 16 bytes
-kmRemapTest()                 CapsLock (or Fn+CapsLock) → x, upload, tell the user to type
-kmSetBusy(on)                 disables KM_ACTIONS while a transfer runs
-```
-
-`KM_ACTIONS` must contain **every** button that can start a transfer, including the layer tabs.
-
----
-
-## 3. Invariants (break these and the keyboard misbehaves)
-
-1. **One transfer at a time.** `kmBusy` + `kmSetBusy` + the guard in `kmSetLayer`.
-2. **Never stage after a bad begin or announce.** `sendTable` sends `04 F0` and returns.
-3. **Poll for a stamped reply.** Never replace `waitReply` with a single read.
-4. **Table is always 576 bytes**, records at `idx*4`, trailer `AA 55`, `idx ≤ 142`.
-5. **Fn layer: zero = default.** Never seed it with `FACTORY_KEYS`.
-6. **`fnlayer_disable` keys are read-only on the Fn layer.** Refuse the edit and grey the key.
-7. **`applied`/`appliedMedia` only move on `commit 0x01`.**
-8. **Persist only after success** (`kmSaveFnOverrides` is called inside the `ok` branch).
-9. **The record page is explicit.** `media` selects `0x03`; never infer it from the usage number
-   (0xE2 is Left Alt/Mute, 0xCD is a reserved keyboard usage and Play/Pause). The raw-text form
-   for media is `c:0x…`.
-
----
-
-## 4. Harness markers (do not remove)
-
-Both Node harnesses extract code from the HTML by string slicing:
-
-| Harness | Slice | Markers |
+| Constant | Value | Meaning |
 |---|---|---|
-| `tools/kmtest.js` | packet logic | `const FACTORY_KEYS = [` … `];` and `const SLOT_MAGIC_AT` … `/* ---------- key editor` |
-| `tools/editortest2.js` | keys + editor | `const FACTORY_KEYS = [` … `/* ---------- key editor` and `/* ---------- key editor` … `// Only one feature-transfer sequence` |
+| `VENDOR_ID` | `0x0C45` | AJAZZ vendor id |
+| `PRODUCT_IDS` | `0x8009`, `0x800A`, `0xFDFD` | accepted product ids |
+| `CONFIG_USAGE_PAGE` / `CONFIG_USAGE` | `0xFF13` / `0x0001` | the configuration collection |
+| `REPORT_ID` / `REPORT_SIZE` | `0` / `64` | feature report framing |
+| `CHUNK_SIZE` / `CHUNK_COUNT` | `64` / `9` | 576 bytes in 9 chunks |
+| `TIMING.settle` / `TIMING.poll` | `220` / `60` ms | reply wait and poll interval |
 
-Practical rules:
+`HidClient.send` pads one payload to 64 bytes and calls `sendFeatureReport(0, frame)`.
+`HidClient.read` races `receiveFeatureReport(0)` against a clock timeout and returns
+`{ ok: true, bytes }` or `{ ok: false, reason }`.
 
-* keep the two banner comments exactly as they are;
-* keep `FACTORY_KEYS`, `modBit`, `encodeRecord`, `parseMapText`, `buildTable`,
-  `FN_LOCKED`, `SLOT_MAGIC_AT` above the first marker (they are inside the slice);
-* keep the editor functions above the transport marker;
-* the harness supplies `document`, `$`, `log`, `escapeHtml`, `localStorage` and declares
-  `kmBusy`, so do not move editor code below the transport marker without updating the slice.
+`TransferService.sendTable` is the app's key-table write path:
 
-Run both after any edit:
-
-```bat
-node tools\kmtest.js index.html
-node tools\editortest2.js index.html
+```text
+04 18  →  04 11 (top) or 04 27 (Fn)  →  9 x 64-byte chunks  →  04 02  →  04 F0
 ```
 
-`kmtest.js` prints the expected value after `<-` on each line; `editortest2.js` prints the
-editor's state transitions for both layers. Also check the script parses:
+`waitReply` settles for 220 ms, then polls every 60 ms for up to 6 s. It accepts only a frame
+where byte 1 matches the command and byte 3 is not zero. A commit `0xFF` is a firmware rejection,
+not a transport failure; `isTransportFailed` keeps the two apart.
 
-```bat
-node tools\check-js.js index.html
+`TransferService` owns the transfer lock. A second `sendTable` call returns `{ busy: true }`
+instead of interleaving. `App` also keeps one busy flag for uploads and advanced probes, so a probe
+cannot run during an upload and an upload cannot start during a probe.
+
+## 4. Keymap
+
+```text
+FACTORY_KEYS           81 entries: idx, usage, name, x, y, w, h
+modBit                 0xE0..0xE7 -> 1, 2, 4, 8, 16, 32, 64, 128
+encodeRecord           keyboard -> [0x02, mod, usage, 0]
+                       consumer -> [0x03, lo, hi, 0]
+buildTable             576 zeroed bytes, record at idx * 4,
+                       skips usage 0 and fnlayer_disable on the Fn layer,
+                       writes AA 55 at bytes 574..575
+parseUsageToken        "0x04" keyboard, "c:0xE2" consumer
+parseMapText           "idx [c:]usage name" per line, # comments
 ```
 
----
+`usageLabel` (keymap names) prints a human label and carries the `media` flag, so a value is never
+shown without its page. `usageToken` (editor state) prints the raw token, with `c:` for media.
 
-## 5. Common changes
+## 5. Editor state
 
-### Add a usage to the picker
+```text
+EditorState    { top, fn, layer, selected }
+EditorRow      { idx, usage, media, name, x, y, w, h,
+                 factory, factoryMedia, applied, appliedMedia }
+```
 
-`USAGE_NAMES` (map) and `USAGE_GROUPS` (ranges) drive `usageOptionsHtml()`. A usage outside the
-listed ranges needs either a wider group or an explicit entry.
+Every row carries what the editor says now (`usage`, `media`), what is believed to be on the
+keyboard (`applied`, `appliedMedia`), and the baseline (`factory`, `factoryMedia`). On the Fn layer
+the factory baseline is zero, because zero means "firmware default".
 
-### Add a media function
+`getPendingCount` counts rows where `usage !== applied || media !== appliedMedia`. The page matters
+too: `0xE2` Left Alt to `0xE2` Mute changes only `media`.
 
-Add it to `MEDIA_NAMES` (`usage → label`). The Media optgroup and the `c:0x…` token follow
-automatically; the encoder already writes `03 <lo> <hi> 00`. Nothing else in the transport changes.
+Reducer actions:
 
-### Add a record type
+```text
+select              select a key index on the active layer
+layer               switch layer, clear the selection
+usage               set usage and media on the selected row, after validation
+reset-selected      return the selected row to its factory value
+restore-layer       return every row on the active layer to factory
+uploaded            copy usage/media into applied/appliedMedia
+replace             swap in a whole state (restore confirmation)
+```
 
-Change `encodeRecord`, widen validation in `kmSetUsage`, extend `parseMapText` if the value no
-longer fits its page, and add cases to `kmtest.js`. `buildTable` writes whatever `encodeRecord`
-returns.
+`applied` moves only on `uploaded`, which `App` dispatches after a `commit 0x01`. `saveFnOverrides`
+runs in the same success branch. `src/lib/editor/persistence.ts` stores Fn rows as
+`[idx, usage]` or `[idx, usage, 1]` for media under `ak820.fn.overrides`.
 
-### Change the board
+## 6. UI
 
-The board is data-driven from `FACTORY_KEYS` (`idx, usage, name, x, y, w, h`). The geometry was
-derived from the vendor layout (`x = rect_left − 95`, `y = rect_top − 22`) but is baked into those
-numbers; the vendor XML itself is not distributed. Update `docs/key-index-table.md` alongside any
-change to `FACTORY_KEYS`.
+The board is data-driven from `FACTORY_KEYS`. Each key is an absolutely positioned button at
+`x/y/w/h` on a 624 × 250 canvas. A `ResizeObserver` scales the canvas between 0.6× and 1.45× to fit
+its container. Keys are not re-laid out on mobile; the whole board scales.
 
-### Add a layer
+Visual states are separate: brass edge and brass legend mean "differs from factory", a brass dot
+means "not uploaded", an ivory edge means "selected", and a dashed cap means "firmware-owned on the
+Fn layer". Brass is never used as decoration, because the legend gives it meaning.
 
-Only two exist on this board (`0x11`, `0x27`). Both are dispatched by the byte in `sendTable`
-and by `kmLayer` in the UI; a third would need new evidence from the firmware.
+The inspector mirrors the board and is the only place that edits a usage. The layer tabs switch
+between `top` and `fn`. The pending bar stages the upload, and the restore confirmation lives
+beside it. The log drawer keeps every transport line.
+
+`AdvancedDrawer` holds four tabs: diagnostics, deep probe, mailbox and raw command. It takes a
+`clock` prop, which is the real clock in the app and a fake clock in tests. Probes report through
+the same log and set the app busy flag through `onBusyChange`.
+
+## 7. Tests
+
+| File | Covers |
+|---|---|
+| `src/lib/keymap/constants.test.ts` | table size, index limit, trailer offset, Fn lock set |
+| `src/lib/keymap/encode.test.ts` | record type, modifier bits, media bytes |
+| `src/lib/keymap/table.test.ts` | factory table, 164 non-zero bytes, trailer, Fn zeroing, bounds |
+| `src/lib/keymap/parse.test.ts` | map text, `c:` tokens, comments and malformed lines |
+| `src/lib/keymap/names.test.ts` | labels, hex fallback, token parsing |
+| `src/lib/hid/protocol.test.ts` | product ids, commands, frame padding |
+| `src/lib/hid/client.test.ts` | feature send/read, timeout and errors |
+| `src/lib/hid/transfer.test.ts` | the full sequence, abort paths, busy lock, byte order |
+| `src/lib/hid/collections.test.ts` | flattening and config collection lookup |
+| `src/lib/hid/diagnostics.test.ts` | pass, refused write, silent read, missing collection |
+| `src/lib/hid/deepProbe.test.ts` | echo, silent device |
+| `src/lib/hid/mailboxProbe.test.ts` | probe lines and conclusions |
+| `src/lib/hid/raw.test.ts` | hex parsing, chunking, reply listening |
+| `src/lib/editor/state.test.ts` | reducer, pending count, validation, map apply |
+| `src/lib/editor/persistence.test.ts` | load, save, legacy rows, media migration |
+| `src/features/device/useDevice.test.ts` | chooser, open, disconnect, no config interface |
+| `src/features/editor/*.test.tsx` | board, inspector, staging bar |
+| `src/features/advanced/AdvancedDrawer.test.tsx` | each tab, close paths, busy state |
+| `src/App.test.tsx` | offline editing, layers, log |
+| `src/App.upload.test.tsx` | fake HID end to end: connect, edit, upload, commit |
+
+The suite needs no keyboard. `src/test/hidFakes.ts` provides `FakeClock` and `FakeTransport`, and
+the app tests install a fake `navigator.hid`.
+
+`npm run verify` runs the typecheck, the linter, the format check, Vitest and the production build.
+All five must pass before a commit.
+
+## 8. Invariants
+
+1. **One transfer at a time.** `TransferService` owns the lock; the app busy flag serializes probes
+   against uploads.
+2. **Never stage after a bad begin or announce.** Send `04 F0` and stop.
+3. **Poll for a stamped reply.** Never replace `waitReply` with one read.
+4. **The table is always 576 bytes.** Records at `idx * 4`, trailer `AA 55`, `idx ≤ 142`.
+5. **Fn layer: zero means firmware default.** Never seed it with `FACTORY_KEYS`.
+6. **`fnlayer_disable` keys are read-only on the Fn layer.** Refuse the edit and disable the key.
+7. **`applied` and `appliedMedia` move only on `commit 0x01`.**
+8. **Persist only after success.** `saveFnOverrides` runs inside the accepted branch.
+9. **The record page is explicit.** `media` selects `0x03`; never infer it from the usage number.
+   The raw token for media is `c:0x…`.
+10. **No HID writes in render or `useEffect`.** StrictMode double-invokes effects, and a double
+    upload is a hardware failure.
+
+## 9. Common changes
+
+To add a usage or a media function, edit `USAGE_NAMES`, `USAGE_GROUPS` and `MEDIA_NAMES` in
+`src/lib/keymap/names.ts`. The picker and the labels follow.
+
+To accept another product id, add it to `PRODUCT_IDS` in `src/lib/hid/protocol.ts`. The WebHID
+filters are built from that list.
+
+To change the board, edit `FACTORY_KEYS` and then `docs/key-index-table.md`. The geometry is baked
+into those numbers; the vendor XML is not distributed.
+
+To add a record type, change `encodeRecord`, widen `validateUsage`, extend the token parser if the
+value no longer fits its page, and add byte tests.
+
+Only two layers exist on this board, `0x11` and `0x27`. A third needs new evidence from the
+firmware.
+
+## 10. The v1 code
+
+The single-file v1 app and its Node harnesses are at tag `v1.0.1`. Nothing in the v2 test path
+reads `index.html`; the npm scripts are the only check path.

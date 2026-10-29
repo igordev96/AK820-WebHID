@@ -1,13 +1,18 @@
 # AK820 Pro WebHID key remapper
 
-An unofficial browser tool for remapping the AJAZZ AK820 Pro. It uses WebHID to talk to the
-keyboard's configuration interface, so there is nothing to install and no admin rights to ask
+An unofficial browser tool for remapping the AJAZZ AK820 Pro. It talks to the keyboard's
+configuration interface over WebHID, so there is nothing to install and no admin rights to ask
 for. It runs in Chrome, Edge or Opera on desktop.
-
-Current release: 1.0.1.
 
 AK820 Pro is a trademark of its owner. This project is not affiliated with AJAZZ. The tool writes
 the key table, so keep the vendor application available for recovery.
+
+## Status
+
+Version 2 is a Vite, React and TypeScript rewrite of the v1.0.1 single-file app. The key table,
+the transfer sequence and the wire bytes are unchanged. The new build has passed tests against a
+fake device; hardware Test 9 has not run yet.
+[docs/02-hardware-tests.md](docs/02-hardware-tests.md) records what has been proven on the board.
 
 ## What it does
 
@@ -16,9 +21,10 @@ the key table, so keep the vendor application available for recovery.
 - Assigns consumer keys: mute, volume, play/pause, track skip, browser back and forward,
   calculator and email.
 - Restores the factory top map or clears every Fn override.
+- Runs diagnostics, a deep probe, a mailbox probe and raw test commands from the Advanced drawer.
 
-Top-layer and Fn-layer remapping and both restore actions were tested on an AK820 Pro
-(VID `0C45`, PID `8009`). Media testing covered Mute, Volume up and Volume down. The other
+Top-layer and Fn-layer remapping and both restore actions were tested on an AK820 Pro (VID `0C45`,
+PID `8009`) with the v1 app. Media testing covered Mute, Volume up and Volume down. The other
 consumer functions use the same record format but were not each tested.
 
 ## Supported devices
@@ -28,7 +34,7 @@ hardware. Other AK820 variants may share the protocol, but they have not been te
 
 ## What it cannot do
 
-The firmware has no read-back command, so the page cannot show the layout stored on the keyboard.
+The firmware has no read-back command, so the app cannot show the layout stored on the keyboard.
 It assumes the top layer is factory and treats an all-zero Fn table as the default. Fn overrides
 are saved in this browser.
 
@@ -44,15 +50,22 @@ configuration interface.
 
 ## Quick start
 
-1. Run `start.cmd` on Windows, or `node serve.js` on any OS with Node.js 22.5 or newer.
-2. Open <http://localhost:8765/>.
-3. Click **Connect keyboard** and choose the AK820 in the browser chooser.
-4. Pick a key, choose a function, and click **Upload changes**.
+```bat
+npm install
+npm run dev
+```
 
-`serve.js` only serves the files. The tool itself is `index.html`, with no build step and no
-dependencies.
+Open <http://localhost:5173/>, click **Connect keyboard** and choose the AK820 in the browser
+chooser. Pick a key, choose a function, then click **Upload changes**.
 
-This repository is source-only. Run it locally; there is no hosted copy.
+To try the production build:
+
+```bat
+npm run build
+npm run preview
+```
+
+`dist/` holds the deployable files. It is never committed.
 
 ## Using the editor
 
@@ -72,10 +85,13 @@ also keyboard Left Alt.
 layer. On the Fn layer, **Back to firmware default** clears one override and **Clear all Fn
 overrides** clears the layer.
 
+**Advanced** opens the diagnostics, the deep probe, the mailbox probe and a raw command card.
+These send test commands and never write a keymap. Uploads are locked while one of them runs.
+
 ## The missing read-back
 
-If you remapped keys in the vendor app, this page cannot see that layout. Uploading the factory
-map will overwrite it. Restore the vendor app's defaults first if you need to keep it.
+If you remapped keys in the vendor app, this app cannot see that layout. Uploading the factory map
+will overwrite it. Restore the vendor app's defaults first if you need to keep it.
 
 Fn overrides are stored in `localStorage` under `ak820.fn.overrides` in this browser profile.
 Clearing site data forgets them. They do not travel to another browser or machine.
@@ -87,15 +103,41 @@ the Fn layer, then upload.
 
 Undo a whole layer with **Restore factory map** or **Clear all Fn overrides**.
 
-If the page refuses a transfer, it stops before staging data, so the keyboard is unchanged.
-Unplug and replug the keyboard, then try again. Close any other program that may hold the
-interface.
+If the app refuses a transfer, it stops before staging data, so the keyboard is unchanged. Unplug
+and replug the keyboard, then try again. Close any other program that may hold the interface.
 
 If the keyboard stops responding or types the wrong keys, unplug and replug it, upload the factory
 map again, or use the vendor application's restore function.
 
-Do not start two uploads at once. The page locks the controls during a transfer; leave that lock
-in place.
+Do not start two uploads at once. The app locks the editor during a transfer; leave that lock in
+place.
+
+## Privacy
+
+The page makes no analytics, telemetry or external asset requests. Fonts are self-hosted. The only
+stored data is the Fn overrides in `localStorage` under `ak820.fn.overrides`.
+
+## Development
+
+Node.js 22.12 or newer is required for development and the build. Node 24 is recommended.
+
+```bat
+npm install
+npm run verify
+```
+
+`npm run verify` runs the typecheck, the linter, the format check, the Vitest suite and the
+production build. All five must pass before a commit.
+
+`src/lib/keymap` and `src/lib/hid` import no React. Components live in `src/features` and call
+those modules or the editor state. HID tests use a fake device, so the suite runs without a
+keyboard. [docs/04-code-map.md](docs/04-code-map.md) maps the modules and the tests.
+
+## Deployment
+
+`netlify.toml` runs `npm run build` on Node 24 and publishes `dist/`. There are no redirects or
+server functions. WebHID permission belongs to the origin, so the localhost and deployed origins
+keep separate device permissions.
 
 ## Documentation
 
@@ -106,37 +148,14 @@ The full reading order is in [docs/README.md](docs/README.md).
 | [docs/01-protocol.md](docs/01-protocol.md) | device, report framing, mailbox, table format, layers |
 | [docs/02-hardware-tests.md](docs/02-hardware-tests.md) | hardware runs and what they proved |
 | [docs/03-media-keys.md](docs/03-media-keys.md) | consumer records and the explicit page marker |
-| [docs/04-code-map.md](docs/04-code-map.md) | how `index.html` is organised |
-| [docs/05-setup.md](docs/05-setup.md) | local setup, checks and troubleshooting |
+| [docs/04-code-map.md](docs/04-code-map.md) | module map, state flow and test layout |
+| [docs/05-setup.md](docs/05-setup.md) | setup, checks, deployment and troubleshooting |
 | [docs/06-history.md](docs/06-history.md) | decisions, dead ends and lessons |
 | [docs/key-index-table.md](docs/key-index-table.md) | key index, usage, Fn lock and geometry |
 
 The protocol notes were written for interoperability. Vendor binaries, layout XML, artwork and
 the installer are not distributed here. A few documents mention the private research material
 they were derived from.
-
-## Development
-
-The driver is one file: `index.html`. There are no dependencies and no build step.
-
-```bat
-node tools/check-js.js index.html
-node tools/kmtest.js index.html
-node tools/editortest2.js index.html
-```
-
-All three must pass before a commit. `npm test` runs the same checks. `tools/kmtest.js` asserts
-the 576-byte table byte for byte. `tools/editortest2.js` tests the editor with a fake DOM.
-`tools/hidwatch.cs` and `tools/hidcaps.cs` are optional HID probes; they need the .NET Framework
-compiler and are not needed to use the page.
-
-`index.html` is sliced by `tools/kmtest.js` and `tools/editortest2.js` using banner comments. Keep
-those markers in place; [docs/04-code-map.md](docs/04-code-map.md) lists them.
-
-## Privacy
-
-The page makes no network requests and has no telemetry. The only stored data is the Fn overrides
-in `localStorage` under `ak820.fn.overrides`.
 
 ## License
 

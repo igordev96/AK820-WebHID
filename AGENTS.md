@@ -18,9 +18,8 @@ Read these before touching the code:
 3. `docs/01-protocol.md`: the wire format.
 4. `docs/02-hardware-tests.md`: what was actually verified on the board.
 
-`docs/README.md` lists the full documentation order. `docs/04-code-map.md` still describes the v1
-single-file page and is being rewritten for the React layout. Until that lands, treat it as
-history, not as a guide to `src/`.
+`docs/README.md` lists the full documentation order. `docs/04-code-map.md` maps the modules and
+the tests in `src/`.
 
 ## Stack
 
@@ -120,7 +119,7 @@ Scopes: `app`, `editor`, `keymap`, `media`, `transport`, `styles`, `docs`, `tool
 | `docs/01-protocol.md` | wire format; update when the bytes or commands change |
 | `docs/02-hardware-tests.md` | dated evidence, Test N; append, do not rewrite |
 | `docs/03-media-keys.md` | consumer records and the media result |
-| `docs/04-code-map.md` | module map and test layout; rewrite for `src/` |
+| `docs/04-code-map.md` | module map, state flow and test layout |
 | `docs/05-setup.md` | install, dev server, checks, Netlify |
 | `docs/06-history.md` | milestones, lessons, open threads |
 
@@ -128,19 +127,17 @@ Never claim "works" from a `0x01` commit. Keep `docs/02-hardware-tests.md` factu
 
 ## Refactor state
 
-Phases 1 to 5 are complete on `refactor/react`, based on tag `v1.0.1`. `main` still holds the v1
+Phases 1 to 7 are complete on `refactor/react`, based on tag `v1.0.1`. `main` still holds the v1
 release. The toolchain, keymap, HID transport and transfer service, editor state/persistence, the
-React editor and the advanced drawer are ported. Connection, editing, upload, restore, the log
-drawer, diagnostics, the deep probe, the mailbox probe, the raw command card and the responsive
-board are wired against the fake device.
+React editor, the advanced drawer, the visual pass and the v2 documentation are in place.
+Connection, editing, upload, restore, the log drawer, diagnostics, the deep probe, the mailbox
+probe, the raw command card and the responsive board are wired against the fake device.
 
-The visual pass is done. Next is the v1 docs rewrite, the Netlify check, hardware Test 9 and the
-`v2.0.0` tag. No hardware has confirmed the React build yet.
+Next is hardware Test 9, then the `v2.0.0` tag. No hardware has confirmed the React build yet.
 
-The v1 files `index.html` (old product), `serve.js`, `start.cmd`, `tools/check-js.js`,
-`tools/kmtest.js` and `tools/editortest2.js` are legacy. Do not use them as the test path. They
-will be removed in Phase 7. The npm scripts are the current checks. `README.md`,
-`docs/04-code-map.md` and `docs/05-setup.md` still describe the v1 app and are updated in Phase 7.
+The v1 `serve.js`, `start.cmd` and `tools/` JavaScript harnesses are gone; their last copy is in
+the `v1.0.1` tag. The npm scripts are the only check path. The root `index.html` is the Vite entry,
+not the old product.
 
 Keep the protocol behaviour identical through the refactor. Do not mix feature work into this
 branch.

@@ -5,6 +5,10 @@ Board: **AJAZZ AK820 Pro**, VID/PID `0C45:8009`, US layout, 81 keys, firmware as
 `commit 0x01`, and the *keyboard behaviour* was checked by the person at the keyboard — the
 mailbox alone is not evidence (see docs/01-protocol.md §3).
 
+Tests 1 to 8 ran on the v1 single-file app. The v2 rewrite sends the same bytes in the same order;
+the byte checks now live in `src/lib/keymap/table.test.ts` and the transport checks in
+`src/lib/hid/transfer.test.ts`. Test 9 will record the React build on the board.
+
 ---
 
 ## Test 1 — connect, enumerate, mailbox
@@ -188,7 +192,7 @@ handled by the explicit `media` flag, not by a numeric range.
 | commit reply | 0–1 ms (occasionally hundreds of ms under load) |
 | whole upload | ~1.3 s including settles |
 
-## How to reproduce
+## How to reproduce (v1)
 
 ```
 start.cmd                  → http://localhost:8765
@@ -201,3 +205,18 @@ start.cmd                  → http://localhost:8765
    then add one override and test it.
 
 Every run logs the full 64-byte frames; copy the log with **Copy report** before closing.
+
+## How to reproduce (v2)
+
+```bat
+npm install
+npm run dev
+```
+
+1. Close the AJAZZ desktop app.
+2. Open <http://localhost:5173/>, click **Connect keyboard**, choose the AK820.
+3. Change one key, upload, test by typing. Restore with **Restore factory map**.
+4. Fn tab: upload with no edits first (writes zeros) and check that Fn behaviour is unchanged;
+   then add one override and test it.
+
+The log drawer has **Copy**. The app has no numbered cards.

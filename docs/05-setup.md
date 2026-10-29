@@ -1,8 +1,6 @@
-# 05 · Local setup
+# 05 · Setup, checks and deployment
 
-The driver installs nothing. Node.js is only needed for the local static server and the checks.
-
----
+The app installs nothing on the machine. Node.js is needed to build it and to run the checks.
 
 ## 1. Requirements
 
@@ -10,97 +8,112 @@ The driver installs nothing. Node.js is only needed for the local static server 
 |---|---|---|
 | Chrome, Edge or Opera (desktop) | WebHID | Firefox, Safari and mobile do not support it |
 | USB (wired) connection | the configuration collection | Bluetooth does not expose it |
-| A local static server | WebHID needs a secure context | `http://localhost` counts |
-| Node.js **22.5+** (optional) | serve.js and the checks | the page itself needs no Node |
-| No administrator rights | everything is per-user | nothing is installed |
+| A local server or HTTPS | WebHID needs a secure context | `http://localhost` counts |
+| Node.js 22.12+ | Vite, TypeScript and the checks | 24 is recommended; see `.nvmrc` |
+| No administrator rights | everything is per-user | nothing is installed system-wide |
 
----
-
-## 2. Run the driver
+## 2. Install and run
 
 ```bat
-start.cmd
+npm install
+npm run dev
 ```
 
-On any OS you can run it directly:
+Vite prints the local URL, normally <http://localhost:5173/>. Open it, click **Connect keyboard**
+and choose the AK820 in the browser chooser.
 
-```bash
-node serve.js
+To run the production build:
+
+```bat
+npm run build
+npm run preview
 ```
 
-This starts a static server on `127.0.0.1:8765` and opens <http://localhost:8765/>.
+`dist/` holds static files. Serve it from any HTTPS host or from localhost.
 
-- Port already in use? Stop the old server (`netstat -ano | findstr :8765`) or change `PORT` in
-  `serve.js`.
-- The server sends `Cache-Control: no-store`, so a normal reload always picks up edits.
-- The first **Connect keyboard** shows Chrome's device chooser. The keyboard appears as `AK820`
-  (VID `0C45`). After that, Chrome remembers the origin and lists it as previously authorised.
+## 3. Checks
 
-### Before connecting
+```bat
+npm run verify
+```
+
+That runs all five steps in order:
+
+| Step | Script | What it does |
+|---|---|---|
+| typecheck | `npm run typecheck` | `tsc --noEmit` |
+| lint | `npm run lint` | `oxlint src vite.config.ts` |
+| format | `npm run format:check` | `oxfmt --check` on the source and config files |
+| tests | `npm run test` | Vitest, React Testing Library, fake HID device |
+| build | `npm run build` | typecheck, then `vite build` |
+
+`npm run format` applies the formatter. Tests do not need a keyboard: `src/test/hidFakes.ts`
+provides a fake clock, a fake transport, and the app tests install a fake `navigator.hid`.
+
+The build fails on a type error because `build` runs `tsc --noEmit` before Vite.
+
+## 4. Deployment
+
+`netlify.toml` builds the site:
+
+```toml
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "24"
+```
+
+The app has no routes or server functions, so there are no redirect rules. `dist/` is generated
+and never committed.
+
+The response headers set `X-Content-Type-Options`, `Referrer-Policy` and
+`Permissions-Policy: hid=(self)`. WebHID permission belongs to the origin, so a device allowed on
+localhost is not automatically allowed on the deployed site. Connect once on each origin.
+
+The Netlify deploy itself is not part of `npm run verify`. Check the production build locally with
+`npm run build` and `npm run preview` before merging to `main`.
+
+## 5. Before connecting
 
 - **Close the AJAZZ desktop app.** Windows allows one program to hold the config interface.
-  Symptom if not: `device.open()` fails, or every command returns `0xFF`.
+  Symptom if not: `device.open()` fails, the app says the interface is unavailable, or every
+  command returns `0xFF`.
 - Use **USB**, not Bluetooth.
 - **Disconnect in the page before opening the vendor app again.**
 
----
+## 6. Troubleshooting
 
-## 3. Verify the checkout
-
-```bat
-node tools/check-js.js index.html
-node tools/kmtest.js index.html
-node tools/editortest2.js index.html
-```
-
-`npm test` runs the same three checks (there are no dependencies to install), and `npm start`
-runs `serve.js`.
-
-Expected highlights:
-
-```
-JS syntax OK
-
-factory keys: 81
-non-zero bytes: 164 of 576
-slot143 bytes: 00 00 aa 55 <- 00 00 AA 55
-fn all-default: non-zero payload bytes = 0 <- 0
-fn CapsLock @220: 02 00 1b 00
-media Mute @220: 03 e2 00 00
-
-board keys: 81        locked keys: 6
-fn option count: 128 default option: true
-media options: true true true
-fn f1 usage from storage: 27
-fn f2 media from storage: true 226
-```
-
-The harnesses have no DOM and no device: they slice the relevant code out of `index.html` by
-marker comments (see `docs/04-code-map.md` §4).
-
----
-
-## 4. Troubleshooting
-
-| Symptom | Cause / fix |
+| Symptom | Cause and fix |
 |---|---|
-| `device.open()` fails or no device in the chooser | vendor app still running, or Bluetooth mode |
-| `04 18` answers `0xFF` | another transfer is still in flight, or another program holds the interface |
-| chunk refused 4× (each attempt ~5 s) | firmware is not in the data phase — usually a previous aborted transfer; replug USB and retry |
-| commit `0xFF` | the staged table is invalid (trailer, slot > 142, bad record) |
-| upload accepted but nothing changed | wrong layer, `fnlayer_disable` key, or a record type the firmware ignores |
+| No device in the chooser | vendor app still running, Bluetooth mode, or a browser without WebHID |
+| “WebHID is not available in this browser” | Firefox, Safari or a mobile browser; use desktop Chrome, Edge or Opera |
+| “The configuration interface was not found” | USB mode, vendor app holding the device, or another AK820 variant |
+| `device.open()` fails | the interface is already open elsewhere, or permission was denied |
+| `04 18` answers `0xFF` | another transfer is in flight, or another program holds the interface |
+| Chunk refused four times | the firmware is not in the data phase, usually after an aborted transfer; replug USB and retry |
+| Commit `0xFF` | the staged table is invalid (trailer, slot above 142, bad record); nothing was applied |
+| Upload accepted but nothing changed | wrong layer, a `fnlayer_disable` key, or a record type the firmware ignores |
 | Fn overrides disappear after reload | expected: there is no read-back; the page restores them from `localStorage` |
-| `localStorage` errors | the page was opened as `file://`; use the localhost server |
-| everything looks fine but keys do not type | restore the factory map, or use the vendor app's reset |
+| Fn overrides do not follow to another browser | expected: they live in this browser profile only |
+| `localStorage` errors | the app was opened from `file://` or storage is blocked; use localhost or HTTPS |
+| Everything looks fine but keys do not type | restore the factory map, or use the vendor app's reset |
+| The deployed site does not see the keyboard | serve it over HTTPS and allow the device on that origin; permission does not carry over from localhost |
+| The board is small on a phone | the page renders on mobile, but mobile browsers cannot use WebHID |
 
 The vendor application is the last-resort recovery path. Keep it available, and do not run it at
-the same time as this page.
+the same time as this app.
 
----
-
-## 5. Optional hardware probes
+## 7. Optional hardware probes
 
 `tools/hidwatch.cs` enumerates every HID collection and prints input reports with timestamps;
 `tools/hidcaps.cs` prints capabilities only. They are plain C# compiled with the .NET Framework
-compiler (`csc.exe`) and need no installation. They are useful for checking what the firmware
-emits for a key, but they are not needed to use or test the driver.
+compiler (`csc.exe`) and need no installation. They are useful for checking what the firmware emits
+for a key, but they are not needed to use or test the app.
+
+## 8. The v1 app
+
+The single-file v1.0.1 app and its Node harnesses are in the `v1.0.1` tag. They are not part of the
+current build or test path. `serve.js`, `start.cmd` and the three JavaScript harnesses were removed
+with the v1 code.
