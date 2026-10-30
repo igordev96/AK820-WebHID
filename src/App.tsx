@@ -483,7 +483,7 @@ export function App() {
               <section className="flex min-w-0 flex-col gap-4">
                 <Tabs value={state.layer} onValueChange={(next) => handleLayer(next as Layer)}>
                   <LayerTabs layer={state.layer} disabled={busy} />
-                  <TabsContent value="top">
+                  <TabsContent value="top" className="mt-4">
                     <KeymapBoard
                       rows={rows}
                       layer={state.layer}
@@ -492,7 +492,7 @@ export function App() {
                       onSelect={handleSelect}
                     />
                   </TabsContent>
-                  <TabsContent value="fn">
+                  <TabsContent value="fn" className="mt-4">
                     <KeymapBoard
                       rows={rows}
                       layer={state.layer}

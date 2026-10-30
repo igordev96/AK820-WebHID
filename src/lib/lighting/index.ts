@@ -9,3 +9,5 @@ export {
   buildLightRecord,
 } from './record';
 export type { LightDirection, LightMode, LightRecord } from './record';
+export { LIGHT_BOARD_HEIGHT, LIGHT_BOARD_WIDTH, lightMotion, lightPhase } from './preview';
+export type { LightKey, LightMotion } from './preview';

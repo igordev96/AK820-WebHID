@@ -15,7 +15,7 @@ src/components/ui/       Button, Popover, Calendar, Tabs, Checkbox, Slider, Sele
 src/lib/keymap/          constants, factory keys, record encoding, names, parsing, table
 src/lib/hid/             protocol, client, collections, WebHID types, transfer, time, probes, raw
 src/lib/screen/          RGB565, frame layout, animation payload
-src/lib/lighting/        the 64-byte solid-light record
+src/lib/lighting/        the 64-byte solid-light record, preview motion and phase
 src/lib/editor/          row state, reducer, validation, persistence
 src/lib/clock.ts         Clock type and the real timer
 src/lib/format.ts        hex formatting
@@ -167,7 +167,9 @@ colour and Colourful, brightness, speed, and the direction pair for its axis. Th
 shadcn-style Radix primitives, so tabs own their panels, sliders expose their values and the
 select is keyboard-driven. `LightPreview` is the real 81-key board; it animates an approximation
 of the selected effect from the mode, speed, direction, brightness and Colourful state, and stops
-under `prefers-reduced-motion`.
+under `prefers-reduced-motion`. The mode-to-motion table and each key's position in the wave live
+in `src/lib/lighting/preview.ts`, so the travel direction of a row or column and the rotation
+flip are tested without a keyboard.
 
 `AdvancedDrawer` holds four tabs: diagnostics, deep probe, mailbox and raw command. It takes a
 `clock` prop, which is the real clock in the app and a fake clock in tests. Probes report through
@@ -188,6 +190,7 @@ the same log and set the app busy flag through `onBusyChange`.
 | `src/lib/hid/time.test.ts` | clock body, year offset, weekday, input parser |
 | `src/lib/screen/animation.test.ts` | RGB565, header, delays, frame placement |
 | `src/lib/lighting/record.test.ts` | solid-light bytes, colour order, ranges |
+| `src/lib/lighting/preview.test.ts` | effect motion, wave direction, rotation flip |
 | `src/lib/hid/collections.test.ts` | flattening and config collection lookup |
 | `src/lib/hid/diagnostics.test.ts` | pass, refused write, silent read, missing collection |
 | `src/lib/hid/deepProbe.test.ts` | echo, silent device |

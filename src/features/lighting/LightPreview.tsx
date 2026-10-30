@@ -1,6 +1,7 @@
 import type * as React from 'react';
 import { keycapLabel } from '@/features/editor/keyLabels';
 import { FACTORY_KEYS } from '@/lib/keymap';
+import { LIGHT_BOARD_HEIGHT, LIGHT_BOARD_WIDTH, lightMotion, lightPhase } from '@/lib/lighting';
 
 type LightPreviewProps = {
   color: string;
@@ -12,34 +13,13 @@ type LightPreviewProps = {
   direction?: number;
 };
 
-type Motion = 'none' | 'pulse' | 'row' | 'column' | 'radial' | 'rotate' | 'twinkle' | 'hue';
-
 const PAD = 12;
-const WIDTH = 624;
-const HEIGHT = 250;
-const CENTER = { x: WIDTH / 2, y: HEIGHT / 2 };
+const WIDTH = LIGHT_BOARD_WIDTH;
+const HEIGHT = LIGHT_BOARD_HEIGHT;
 const FACTORS = [0.22, 0.38, 0.54, 0.7, 0.9];
 
 const mix = (channel: number, factor: number) => Math.round(16 + (channel - 16) * factor);
 const luminance = (r: number, g: number, b: number) => 0.299 * r + 0.587 * g + 0.114 * b;
-
-const motionFor = (mode: number): Motion => {
-  if (mode === 20) return 'none';
-  if (mode === 1) return 'none';
-  if (mode === 4) return 'twinkle';
-  if (mode === 6 || mode === 8) return 'hue';
-  if (mode === 5) return 'row';
-  if (mode === 9 || mode === 13 || mode === 15) return 'radial';
-  if (mode === 12) return 'rotate';
-  if (mode === 11 || mode === 16 || mode === 18 || mode === 19) return 'column';
-  if (mode === 10) return 'row';
-  if (mode === 14) return 'row';
-  return 'pulse';
-};
-
-// Modes with a fixed travel direction, regardless of the direction control.
-const fixedUp = (mode: number) => mode === 14;
-const fixedDown = (mode: number) => mode === 5;
 
 export function LightPreview({
   color,
@@ -54,7 +34,7 @@ export function LightPreview({
   const green = Number.parseInt(color.slice(3, 5), 16);
   const blue = Number.parseInt(color.slice(5, 7), 16);
   const factor = FACTORS[brightness - 1] ?? 0.54;
-  const motion = off ? 'none' : motionFor(mode);
+  const motion = off ? 'none' : lightMotion(mode);
 
   const solid = `rgb(${mix(red, factor)} ${mix(green, factor)} ${mix(blue, factor)})`;
   const full = `rgb(${red} ${green} ${blue})`;
@@ -75,28 +55,6 @@ export function LightPreview({
     '--light-bright': bright,
     '--light-duration': `${duration}s`,
   } as React.CSSProperties;
-
-  const phase = (key: (typeof FACTORY_KEYS)[number]): number => {
-    if (motion === 'row') {
-      const up = fixedUp(mode) || (!fixedDown(mode) && direction === 2);
-      return up ? 1 - key.y / HEIGHT : key.y / HEIGHT;
-    }
-    if (motion === 'column') {
-      const right = direction === 0;
-      return right ? 1 - key.x / WIDTH : key.x / WIDTH;
-    }
-    if (motion === 'radial') {
-      const cx = key.x + key.w / 2 - CENTER.x;
-      const cy = key.y + key.h / 2 - CENTER.y;
-      return Math.min(1, Math.hypot(cx, cy) / 340);
-    }
-    if (motion === 'rotate') {
-      const angle = Math.atan2(key.y + key.h / 2 - CENTER.y, key.x + key.w / 2 - CENTER.x);
-      return (angle + Math.PI) / (Math.PI * 2);
-    }
-    if (motion === 'twinkle') return ((key.idx * 37) % 100) / 100;
-    return 0;
-  };
 
   const animated = motion !== 'none' && !off;
 
@@ -152,7 +110,7 @@ export function LightPreview({
         {FACTORY_KEYS.map((key) => {
           const label = keycapLabel(key.name);
           const size = label.length >= 5 ? 8 : label.length === 4 ? 9 : 10;
-          const delay = animated ? -phase(key) * duration : 0;
+          const delay = animated ? -lightPhase(motion, mode, direction, key) * duration : 0;
           const className =
             animated && motion !== 'hue'
               ? motion === 'twinkle'
