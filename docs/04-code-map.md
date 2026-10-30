@@ -169,7 +169,8 @@ select is keyboard-driven. `LightPreview` is the real 81-key board; it animates 
 of the selected effect from the mode, speed, direction, brightness and Colourful state, and stops
 under `prefers-reduced-motion`. The mode-to-motion table and each key's position in the wave live
 in `src/lib/lighting/preview.ts`, so the travel direction of a row or column and the rotation
-flip are tested without a keyboard.
+flip are tested without a keyboard. Effects that react to a key press are not modelled: the panel
+has no keystroke to react to.
 
 `AdvancedDrawer` holds four tabs: diagnostics, deep probe, mailbox and raw command. It takes a
 `clock` prop, which is the real clock in the app and a fake clock in tests. Probes report through

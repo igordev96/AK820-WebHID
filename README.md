@@ -150,6 +150,9 @@ put the stock animation back.
 controls it has: colour, Colourful, brightness, speed, and up/down or left/right direction. The
 preview uses the real 81-key layout.
 
+The preview is an approximation. It works from the mode, speed, direction and brightness, so an
+effect that reacts to typing cannot be shown: the panel never sees which key you press.
+
 Per-key colours are not built yet.
 
 **Advanced** opens the diagnostics, the deep probe, the mailbox probe and a raw command card.
