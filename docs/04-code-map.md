@@ -162,6 +162,10 @@ the delays. The file never leaves the page. Uploads show block progress; there i
 because the firmware cannot abort a stream it has started. The card is disabled when WebHID did not
 return the `0xFF68` interface.
 
+`LightingPanel` shows the 20 effects. Each mode's controls come from the vendor database:
+colour and Colourful, brightness, speed, and the direction pair for its axis. `LightPreview` is the
+real 81-key board tinted, or a rainbow when Colourful is on.
+
 `AdvancedDrawer` holds four tabs: diagnostics, deep probe, mailbox and raw command. It takes a
 `clock` prop, which is the real clock in the app and a fake clock in tests. Probes report through
 the same log and set the app busy flag through `onBusyChange`.
@@ -233,9 +237,9 @@ All five must pass before a commit.
 14. **An animation upload is never interrupted.** Once the announce is accepted, the firmware
     expects every block. `04 F0` does not abort it, the keyboard stops responding until replug, and
     the frames already written stay. No cancel button, no signal, no timeout.
-15. **The light is one 64-byte record with `AA 55` at offset 14.** Announce `04 13` with one chunk,
-    then commit and end. Leave 60 ms before the commit; sending it immediately after the chunk
-    caused intermittent unconfirmed commits.
+15. **The light is one 64-byte record with `AA 55` at offset 14.** Byte 8 is colourful, 9 brightness,
+    10 speed and 11 direction (0 right, 1 left, 2 up, 3 down). Announce `04 13` with one chunk, then
+    commit and end. Leave 60 ms before the commit.
 
 ## 9. Common changes
 

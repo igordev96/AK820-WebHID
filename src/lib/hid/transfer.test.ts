@@ -1,5 +1,5 @@
 import { FACTORY_KEYS, buildTable } from '@/lib/keymap';
-import { buildSolidLight } from '@/lib/lighting';
+import { buildLightRecord } from '@/lib/lighting';
 import type { HidReadResult } from '@/lib/hid/client';
 import { SCREEN_BLOCK_SIZE, SCREEN_FRAME_BYTES, buildAnimationPayload } from '@/lib/screen';
 import { FakeClock, FakeTransport, reply } from '@/test/hidFakes';
@@ -347,7 +347,16 @@ const lightReplies = (): HidReadResult[] => [
 ];
 
 describe('TransferService lighting', () => {
-  const record = buildSolidLight({ r: 255, g: 128, b: 0, brightness: 3 });
+  const record = buildLightRecord({
+    mode: 1,
+    r: 255,
+    g: 128,
+    b: 0,
+    brightness: 3,
+    speed: 3,
+    colorful: false,
+    direction: 0,
+  });
 
   it('sends the record as one chunk, then the commit and the end', async () => {
     const { service, transport } = makeService(lightReplies());

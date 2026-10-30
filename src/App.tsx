@@ -11,7 +11,7 @@ import { WriteRules } from '@/features/editor/WriteRules';
 import { LogPanel } from '@/features/log/LogPanel';
 import { useLog } from '@/features/log/useLog';
 import { LightingPanel } from '@/features/lighting/LightingPanel';
-import type { LightingStatus } from '@/features/lighting/LightingPanel';
+import type { LightingStatus, LightingValues } from '@/features/lighting/LightingPanel';
 import { ScreenPanel } from '@/features/screen/ScreenPanel';
 import type { ScreenStatus } from '@/features/screen/AnimationCard';
 import type { TimeStatus } from '@/features/screen/ClockCard';
@@ -33,7 +33,7 @@ import {
 import { hex } from '@/lib/format';
 import { HidClient, STATUS, TransferService, formatClock, isTransportFailed } from '@/lib/hid';
 import { FN_LOCKED, buildTable } from '@/lib/keymap';
-import { buildSolidLight } from '@/lib/lighting';
+import { LIGHT_MODES, LIGHT_MODE_OFF, buildLightRecord } from '@/lib/lighting';
 import { buildAnimationPayload } from '@/lib/screen';
 import { cn } from '@/lib/utils';
 
@@ -342,7 +342,8 @@ export function App() {
   );
 
   const handleApplyLight = useCallback(
-    async (color: string, brightness: number) => {
+    async (values: LightingValues) => {
+      const { mode, color, brightness, speed, colorful, direction } = values;
       if (!transfer) {
         log('Connect the keyboard first.', 'warn');
         return;
@@ -354,11 +355,15 @@ export function App() {
       setLightingStatus({ kind: 'idle' });
 
       try {
-        const record = buildSolidLight({
+        const record = buildLightRecord({
+          mode,
           r: Number.parseInt(color.slice(1, 3), 16),
           g: Number.parseInt(color.slice(3, 5), 16),
           b: Number.parseInt(color.slice(5, 7), 16),
           brightness,
+          speed,
+          colorful,
+          direction,
         });
         const result = await transfer.sendLighting(record);
 
@@ -380,11 +385,20 @@ export function App() {
         const status = commit?.reply.status ?? null;
 
         if (status === STATUS.ok) {
+          const name = LIGHT_MODES.find((item) => item.id === mode)?.name ?? 'Light';
           setLightingStatus({
             kind: 'ok',
-            message: `Sent. The keys are ${color.toUpperCase()} at brightness ${brightness}.`,
+            message:
+              mode === LIGHT_MODE_OFF
+                ? 'Sent. The light is off.'
+                : `Sent. ${name} at ${color.toUpperCase()}, brightness ${brightness}.`,
           });
-          log(`Light sent: ${color.toUpperCase()}, brightness ${brightness}.`, 'ok');
+          log(
+            mode === LIGHT_MODE_OFF
+              ? 'Light off.'
+              : `Light sent: ${name}, ${color.toUpperCase()}, brightness ${brightness}, speed ${speed}, colourful ${colorful ? 'on' : 'off'}.`,
+            'ok',
+          );
           return;
         }
 

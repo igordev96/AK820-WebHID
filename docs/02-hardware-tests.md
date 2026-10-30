@@ -463,3 +463,21 @@ brightness 2 became stable. The failure message was also corrected: an unconfirm
 claims that nothing changed.
 
 Not tested: effect modes and per-key colours. Only the solid colour record (`01 03`) is built.
+
+## Test 16 — lighting effects and controls (30 Oct 2026)
+
+Build: the working tree for the effects release, dev server on `http://localhost:5173`, Chrome on
+Windows.
+
+The user went through all 20 modes on the board, from Static to LED off. Every mode worked. On
+Scrolling and Rolling the user checked the controls: colour, Colourful, brightness, speed and
+direction.
+
+**Bug found.** Horizontal direction was written to byte 12, which the firmware ignores, so Left
+behaved like Right. The captured records show both axes use **byte 11**: `0` right, `1` left,
+`2` up, `3` down. After moving horizontal direction to byte 11, the user confirmed that Left and
+Right point opposite ways, and that Up and Down still work.
+
+The capabilities per mode come from `config_func` in the vendor database: brightness, speed,
+horizontal direction, vertical direction, colour and Colourful. Colourful is on by default for every
+mode except Static, which matches the vendor app.

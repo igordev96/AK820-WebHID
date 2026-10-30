@@ -32,7 +32,8 @@ this computer's time and a time picked by hand. Test 11 added the screen data ch
 128 × 128 picture, Test 12 played a 31-frame GIF, and Test 13 played a 60-frame GIF after the 16-bit
 block count was fixed. Test 14 showed that interrupting an upload wedges the keyboard until it is
 unplugged, so the animation card has no cancel. Test 15 added the solid-colour light and brightness,
-confirmed on the board after a commit-timing fix.
+confirmed on the board after a commit-timing fix. Test 16 added the 20 effects with colour, speed and
+direction; every mode worked, and a left/right direction bug was found and fixed.
 [docs/02-hardware-tests.md](docs/02-hardware-tests.md) records the evidence.
 
 ## What it does
@@ -43,7 +44,7 @@ confirmed on the board after a commit-timing fix.
   calculator and email.
 - Sets the clock on the keyboard's screen, from this computer or from a time you pick.
 - Plays a GIF on the screen, up to 140 frames, or one still picture.
-- Sets a solid colour and brightness on the keys.
+- Sets the keyboard light: 20 effects, colour, brightness, speed and direction.
 - Restores the factory top map or clears every Fn override.
 - Runs diagnostics, a deep probe, a mailbox probe and raw test commands from the Advanced drawer.
 
@@ -68,7 +69,8 @@ are saved in this browser.
 The screen is write-only too: the page cannot read the clock or anything else the screen holds.
 The clock has no timezone, so it stays on the wall-clock time you sent.
 
-The light is solid colour only. Effect modes and per-key colours are not built yet.
+The light supports 20 effects with colour, brightness, speed and direction. Per-key colours are not
+built yet.
 
 The knob is input-only, so it cannot be remapped. Bluetooth mode does not expose the
 configuration interface.
@@ -144,10 +146,11 @@ put the stock animation back.
 
 ### The keyboard light
 
-**Lighting** sets a solid colour and a brightness from 1 to 5. Use the colour picker, choose a
-brightness, then **Apply light**. The keyboard changes at once.
+**Lighting** offers the 20 effects the vendor app lists, from Static to LED off. Each mode shows the
+controls it has: colour, Colourful, brightness, speed, and up/down or left/right direction. The
+preview uses the real 81-key layout.
 
-Only solid colour is built for now. Effect modes and per-key colours are not available yet.
+Per-key colours are not built yet.
 
 **Advanced** opens the diagnostics, the deep probe, the mailbox probe and a raw command card.
 These send test commands and never write a keymap. Uploads are locked while one of them runs.

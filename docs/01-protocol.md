@@ -1,4 +1,4 @@
-# 01 · Wire protocol
+# 01 Â· Wire protocol
 
 Everything here was decoded for interoperability from the vendor application and confirmed on the
 keyboard. Addresses refer to the vendor disassembly, which is kept in the private research
@@ -42,8 +42,8 @@ HidD_SetFeature(handle, buf, 65)
 WebHID's `device.sendFeatureReport(0, new Uint8Array(64))` produces exactly the same bytes, so
 the payload is always described below **without** the leading report id.
 
-* payload ≤ 64 bytes → one report
-* payload > 64 bytes → the first 64 bytes carry the command header, then
+* payload â‰¤ 64 bytes â†’ one report
+* payload > 64 bytes â†’ the first 64 bytes carry the command header, then
   `floor(len / 64)` **bare 64-byte chunks** follow with no per-chunk header
   (`0x44EFD5`). A 576-byte table is therefore `9` chunks.
 
@@ -57,13 +57,13 @@ table chunks must be written blind and paced.
 
 There is a single 64-byte feature buffer. `SET_FEATURE` copies the command into it; the
 firmware processes it asynchronously and stamps the result. A read issued immediately returns
-**our own frame** with the status byte still `0x00` (the 0–1 ms "status 0x00" entries in old
+**our own frame** with the status byte still `0x00` (the 0â€“1 ms "status 0x00" entries in old
 logs).
 
 A real reply satisfies both:
 
-* `byte[1] == command` — the reply echoes the command byte
-* `byte[3] != 0x00` — a status has been stamped
+* `byte[1] == command` â€” the reply echoes the command byte
+* `byte[3] != 0x00` â€” a status has been stamped
 
 Reply layout:
 
@@ -75,7 +75,7 @@ Reply layout:
 |---|---|
 | `0x01` | accepted |
 | `0xFF` | rejected (firmware read the data and refused it) |
-| other | unknown — treat as failure |
+| other | unknown â€” treat as failure |
 
 The commit reply occasionally carries `0x77` in `byte[4]` (seen as `04 02 00 01 77`). Its
 meaning is unknown; it does not affect the verdict and was not present on every run.
@@ -92,16 +92,16 @@ There is **no single-key command**. Any change uploads a full 576-byte table.
 
 ```
 SEND  04 18                                    begin / open staging
-      ← 04 18 00 01 00                         status must be 0x01
+      â† 04 18 00 01 00                         status must be 0x01
 SEND  04 11 00 00 00 00 00 00 09               top layer, 9 chunks
   or  04 27 00 00 00 00 00 00 09               Fn layer,  9 chunks
-      ← 04 11 00 01 00  /  04 27 00 01 00
+      â† 04 11 00 01 00  /  04 27 00 01 00
       (pause ~120 ms while the firmware enters the data phase)
-SEND  9 × 64-byte chunks                        no reply, 12 ms apart
+SEND  9 Ã— 64-byte chunks                        no reply, 12 ms apart
 SEND  04 02                                    commit
-      ← 04 02 00 01 00                         validates the table (see §5)
+      â† 04 02 00 01 00                         validates the table (see Â§5)
 SEND  04 F0                                    end
-      ← 04 F0 00 01 00
+      â† 04 F0 00 01 00
 ```
 
 Byte `8` of the announce is the chunk count (`0x09`). Bytes `2..7` are zero.
@@ -109,32 +109,32 @@ Byte `8` of the announce is the chunk count (`0x09`). Bytes `2..7` are zero.
 Rules that matter (each was learned the hard way):
 
 1. **One transfer at a time.** The mailbox has a single reply slot. Two overlapping uploads
-   corrupt staging and steal each other's replies (observed: second `04 18` → `0xFF`, first
+   corrupt staging and steal each other's replies (observed: second `04 18` â†’ `0xFF`, first
    commit poll consumed the second commit's answer). The page holds a `kmBusy` lock and
    disables every action while a sequence runs.
 2. **Abort on a refused begin or announce.** If `04 18`, or the `04 11`/`04 27` announce, is not
-   `0x01` (or gets no stamped reply), send `04 F0` and stop — never stage chunks into a
+   `0x01` (or gets no stamped reply), send `04 F0` and stop â€” never stage chunks into a
    half-open session.
 3. **Pace the chunks.** Chromium queues feature writes asynchronously; the vendor used
    synchronous `HidD_SetFeature`. 12 ms between chunks works; a 9-frame burst can outrun the
    firmware.
 4. **Retry a chunk** up to 4 times with a 250 ms backoff. A refused chunk after all retries
    means the transfer is dead: `04 F0` and report "nothing changed".
-5. A `0xFF` **commit** is not a transport failure — it means the firmware read the data and
+5. A `0xFF` **commit** is not a transport failure â€” it means the firmware read the data and
    refused it (usually a bad trailer or bad record).
 
 Observed timings on the tested board: begin reply ~1 ms after the 220 ms settle, each chunk
-0–2 ms, whole 9-chunk body ~115 ms, commit ~1 ms. A full upload takes ~1.3 s wall clock.
+0â€“2 ms, whole 9-chunk body ~115 ms, commit ~1 ms. A full upload takes ~1.3 s wall clock.
 
 ---
 
 ## 5. The 576-byte table
 
 ```
-size            576 bytes = 144 slots × 4
-record address  key_index × 4          (0x4185E9: `[ebp + ebx*4 - 360h]`)
+size            576 bytes = 144 slots Ã— 4
+record address  key_index Ã— 4          (0x4185E9: `[ebp + ebx*4 - 360h]`)
 slot 0          never written by the vendor (its key list starts at 1)
-slot 143        574..577 — overlaps the trailer, so key_index ≤ 142
+slot 143        574..577 â€” overlaps the trailer, so key_index â‰¤ 142
 bytes 574..575  AA 55 trailer, required
 ```
 
@@ -161,7 +161,7 @@ vendor's key object carries at `[key+0x18]` (which comes from the DB column `mac
 Modifier bits for record `0x02` (`0x451CA0`): `0x01` Left Ctrl, `0x02` Left Shift, `0x04` Left
 Alt, `0x08` Left Win, `0x10` Right Ctrl, `0x20` Right Shift, `0x40` Right Alt, `0x80` Right Win.
 A key that *is* a modifier is encoded as
-`02 <bit> 00 00` — the usage byte stays zero (confirmed: LShift idx 73 = `02 02 00 00`,
+`02 <bit> 00 00` â€” the usage byte stays zero (confirmed: LShift idx 73 = `02 02 00 00`,
 LCtrl idx 91 = `02 01 00 00`). The vendor rewrites byte 2 back to 0 for usages `0xE0..0xE7`
 (`0x418648` / `0x418662`).
 
@@ -178,7 +178,7 @@ one announce byte and in what a zero slot means.
 | Layer | Announce | Baseline | Zero slot means |
 |---|---|---|---|
 | Top | `04 11` | the 81 factory keys (`FACTORY_KEYS`) | that index has no key |
-| Fn | `04 27` | **all zeros** | *no override — the firmware handles this combination* |
+| Fn | `04 27` | **all zeros** | *no override â€” the firmware handles this combination* |
 
 The Fn layer is an **override table**. The vendor builds it from
 `SELECT * FROM t_key_macro_data WHERE profile = ? AND fn_layer = ?` (vendor application internals
@@ -203,10 +203,10 @@ layer.
 
 ---
 
-## 7. Worked example — CapsLock (idx 55) → A on the top layer
+## 7. Worked example â€” CapsLock (idx 55) â†’ A on the top layer
 
 ```
-offset = 55 × 4 = 220
+offset = 55 Ã— 4 = 220
 slot   = 02 00 04 00                  (type 2, no modifier, usage 0x04 = A)
 trailer= AA 55 at 574..575
 everything else = 00
@@ -230,7 +230,7 @@ chunk 9  offsets 512..575   ... 00 AA 55
 04 F0
 ```
 
-The same change on the Fn layer uses `04 27` and leaves every other slot zero — that table is
+The same change on the Fn layer uses `04 27` and leaves every other slot zero â€” that table is
 `00` everywhere except `02 00 04 00` at 220 and `AA 55` at 574.
 
 The stock top-layer table has **164 non-zero bytes** (81 records, some of which are
@@ -245,7 +245,7 @@ modifier-only). `src/lib/keymap/table.test.ts` asserts that.
 | `04 18` | open staging | status `0x01` |
 | `04 11` | announce top-layer table | byte 8 = chunk count |
 | `04 27` | announce Fn-layer table | byte 8 = chunk count |
-| `04 28` | announce a screen clock write | byte 8 = 1; see §9 |
+| `04 28` | announce a screen clock write | byte 8 = 1; see Â§9 |
 | `04 02` | commit staged table | validates the `AA 55` trailer |
 | `04 F0` | end / abort | also used to abandon a transfer |
 | `04 19` | generic read | used by the mailbox probes |
@@ -258,7 +258,7 @@ the two when reading the disassembly.
 
 ## 9. The screen clock
 
-The board has a 128 × 128 screen with its own clock. The vendor app sets the clock about 1.4 s
+The board has a 128 Ã— 128 screen with its own clock. The vendor app sets the clock about 1.4 s
 after it opens with the keyboard connected, so there is no button to press and nothing to time a
 capture around. The packet below was captured from that startup burst with a Frida hook on
 `HidD_SetFeature` on 29 Oct 2026, then confirmed on the board (`docs/02-hardware-tests.md` Test 10).
@@ -281,16 +281,16 @@ The example is 29 Oct 2026 at 20:40:26, a Thursday.
 | 0 | `00` | fixed |
 | 1 | `01` | screen slot; the vendor sends `GetCurSel + 1` |
 | 2 | `5A` | clock tag |
-| 3 | `1A` | year − 2000 |
-| 4 | `0A` | month, 1–12 |
+| 3 | `1A` | year âˆ’ 2000 |
+| 4 | `0A` | month, 1â€“12 |
 | 5 | `1D` | day |
-| 6 | `14` | hour, 0–23 |
+| 6 | `14` | hour, 0â€“23 |
 | 7 | `28` | minute |
 | 8 | `1A` | second |
 | 9 | `00` | fixed |
 | 10 | `04` | weekday, 0 = Sunday |
-| 11–61 | `00` | padding |
-| 62–63 | `AA 55` | trailer |
+| 11â€“61 | `00` | padding |
+| 62â€“63 | `AA 55` | trailer |
 
 ### What is known and what is not
 
@@ -307,7 +307,7 @@ The example is 29 Oct 2026 at 20:40:26, a Thursday.
 
 ## 10. The screen image and animation
 
-The screen is 128 × 128. A frame is raw **RGB565, 32768 bytes**, little-endian: red is `00 F8`,
+The screen is 128 Ã— 128. A frame is raw **RGB565, 32768 bytes**, little-endian: red is `00 F8`,
 green `E0 07`, blue `1F 00`.
 
 Frame data does **not** go over the config collection. It goes to the second vendor interface,
@@ -336,8 +336,8 @@ The blocks concatenate into one buffer:
 | Offset | Contents |
 |---|---|
 | 0 | frame count, 1 to 140 |
-| 1 … | one delay byte per frame, in 2 ms units |
-| 4 … 255 | `0xFF` padding |
+| 1 â€¦ | one delay byte per frame, in 2 ms units |
+| 4 â€¦ 255 | `0xFF` padding |
 | 256 | frame 1, then each further frame, 32768 bytes |
 | tail | `0xFF` to `blocks x 4096` |
 
@@ -366,12 +366,12 @@ cancel; it is a crash the user has to power-cycle out of.
 
 ## 11. Lighting
 
-A solid colour is one 64-byte record, written with the staged shape and the end command:
+A light is one 64-byte record, written with the staged shape and the end command:
 
 ```
 04 18
 04 13 00 00 00 00 00 00 01      announce, one chunk
-01 R G B 00 00 00 00 00 BB 03 00 00 00 AA 55
+<mode> R G B 00 00 00 00 <colourful> <brightness> <speed> <direction> 00 00 AA 55
 04 02
 04 F0
 ```
@@ -380,21 +380,28 @@ The record:
 
 | Offset | Meaning |
 |---|---|
-| 0 | category: `01` single colour, `06` animated |
-| 1–3 | red, green, blue, 0–255 |
-| 4–8 | zero |
-| 9 | brightness, 1–5 in the vendor app |
-| 10 | effect id: `03` solid, `05` the animated effect captured |
-| 11 | speed |
-| 12 | direction |
-| 13 | zero |
-| 14–15 | `AA 55` |
+| 0 | mode id, 1-20 |
+| 1-3 | red, green, blue, 0-255 |
+| 8 | colourful, 1 or 0 |
+| 9 | brightness, 1-5 |
+| 10 | speed, 1-5 |
+| 11 | direction: 0 right, 1 left, 2 up, 3 down |
+| 12 | zero |
+| 14-15 | `AA 55` |
 
-The rest of the record is zero. The vendor leaves about 75 ms between the record and the commit;
-this page waits 60 ms there, which stopped an intermittent unconfirmed commit at brightness 2.
+The modes, in the order the vendor app lists them: Static, Single on, Single off, Glittering,
+Falling, Colourful, Breath, Spectrum, Outward, Scrolling, Rolling, Rotating, Explode, Launch,
+Ripples, Flowing, Pulsating, Tilt, Shuttle, LED off. LED off (20) is a zeroed record with only the
+trailer.
+
+The vendor database gives each mode its controls in `config_func`. The bits: `0x01` brightness,
+`0x02` speed, `0x04` horizontal direction, `0x08` vertical direction, `0x10` colour, `0x20`
+colourful. Static is `0x31` and has no speed; Colourful and Spectrum are `0x03`, always multi-colour
+with no picker; Scrolling is `0x3B` (up/down); Rolling is `0x37` (left/right).
+
+The vendor leaves about 75 ms between the record and the commit; this page waits 60 ms there, which
+stopped an intermittent unconfirmed commit at brightness 2.
 
 Per-key colours use a different path: `04 23` with nine chunks and a 576-byte table, 4 bytes per
 key slot. Its inner format is not implemented.
-
-
 
