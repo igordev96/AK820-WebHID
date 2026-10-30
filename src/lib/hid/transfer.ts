@@ -3,6 +3,7 @@ import { realClock } from '@/lib/clock';
 import { hex } from '@/lib/format';
 import { TABLE_SIZE } from '@/lib/keymap';
 import { SCREEN_BLOCK_SIZE, SCREEN_BLOCKS_PER_FRAME } from '@/lib/screen';
+import { LIGHT_RECORD_SIZE } from '@/lib/lighting';
 import type { HidTransport } from './client';
 import {
   CHUNK_COUNT,
@@ -262,6 +263,37 @@ export class TransferService {
     return steps;
   }
 
+  /**
+   * Writes one lighting record. The vendor app uses the staged shape with a
+   * single 64-byte chunk and the end command:
+   *
+   *   04 18  →  04 13 (byte 8 = 1)  →  the record  →  04 02  →  04 F0
+   */
+  async sendLighting(record: Uint8Array): Promise<TransferResult> {
+    if (record.length !== LIGHT_RECORD_SIZE) {
+      throw new Error(`lighting record must be ${LIGHT_RECORD_SIZE} bytes`);
+    }
+
+    if (this.busy) {
+      this.log('a transfer is already running — ignoring this request', 'warn');
+      return { steps: [], busy: true };
+    }
+
+    this.busy = true;
+    try {
+      return {
+        steps: await this.runSequence({
+          announce: COMMANDS.light,
+          body: record,
+          chunkCount: 1,
+          sendEnd: true,
+        }),
+      };
+    } finally {
+      this.busy = false;
+    }
+  }
+
   private async runSequence(sequence: Sequence): Promise<TransferStep[]> {
     const steps: TransferStep[] = [];
     const { body, chunkCount } = sequence;
@@ -367,6 +399,8 @@ export class TransferService {
       )} ms`,
       'dim',
     );
+
+    await this.clock.sleep(TIMING.commitPause);
 
     await this.send(Uint8Array.from(COMMANDS.commit));
     const commit = await this.waitReply(COMMANDS.commit[1], 'commit 04 02');

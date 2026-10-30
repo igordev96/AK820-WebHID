@@ -362,4 +362,39 @@ and the screen stays on its loading indicator until the keyboard is unplugged. T
 written stay, so the next animation starts from a mixed buffer. An interrupted upload is not a
 cancel; it is a crash the user has to power-cycle out of.
 
+---
+
+## 11. Lighting
+
+A solid colour is one 64-byte record, written with the staged shape and the end command:
+
+```
+04 18
+04 13 00 00 00 00 00 00 01      announce, one chunk
+01 R G B 00 00 00 00 00 BB 03 00 00 00 AA 55
+04 02
+04 F0
+```
+
+The record:
+
+| Offset | Meaning |
+|---|---|
+| 0 | category: `01` single colour, `06` animated |
+| 1–3 | red, green, blue, 0–255 |
+| 4–8 | zero |
+| 9 | brightness, 1–5 in the vendor app |
+| 10 | effect id: `03` solid, `05` the animated effect captured |
+| 11 | speed |
+| 12 | direction |
+| 13 | zero |
+| 14–15 | `AA 55` |
+
+The rest of the record is zero. The vendor leaves about 75 ms between the record and the commit;
+this page waits 60 ms there, which stopped an intermittent unconfirmed commit at brightness 2.
+
+Per-key colours use a different path: `04 23` with nine chunks and a 576-byte table, 4 bytes per
+key slot. Its inner format is not implemented.
+
+
 

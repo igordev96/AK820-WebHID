@@ -10,6 +10,8 @@ import { PendingBar } from '@/features/editor/PendingBar';
 import { WriteRules } from '@/features/editor/WriteRules';
 import { LogPanel } from '@/features/log/LogPanel';
 import { useLog } from '@/features/log/useLog';
+import { LightingPanel } from '@/features/lighting/LightingPanel';
+import type { LightingStatus } from '@/features/lighting/LightingPanel';
 import { ScreenPanel } from '@/features/screen/ScreenPanel';
 import type { ScreenStatus } from '@/features/screen/AnimationCard';
 import type { TimeStatus } from '@/features/screen/ClockCard';
@@ -31,6 +33,7 @@ import {
 import { hex } from '@/lib/format';
 import { HidClient, STATUS, TransferService, formatClock, isTransportFailed } from '@/lib/hid';
 import { FN_LOCKED, buildTable } from '@/lib/keymap';
+import { buildSolidLight } from '@/lib/lighting';
 import { buildAnimationPayload } from '@/lib/screen';
 import { cn } from '@/lib/utils';
 
@@ -63,6 +66,7 @@ export function App() {
   const [logOpen, setLogOpen] = useState(false);
   const [view, setView] = useState<View>('keys');
   const [timeStatus, setTimeStatus] = useState<TimeStatus>({ kind: 'idle' });
+  const [lightingStatus, setLightingStatus] = useState<LightingStatus>({ kind: 'idle' });
   const [animationStatus, setAnimationStatus] = useState<ScreenStatus>({ kind: 'idle' });
   const [animationSending, setAnimationSending] = useState(false);
   const [animationProgress, setAnimationProgress] = useState<{
@@ -337,6 +341,77 @@ export function App() {
     [log, transfer],
   );
 
+  const handleApplyLight = useCallback(
+    async (color: string, brightness: number) => {
+      if (!transfer) {
+        log('Connect the keyboard first.', 'warn');
+        return;
+      }
+      if (busyRef.current) return;
+
+      busyRef.current = true;
+      setBusy(true);
+      setLightingStatus({ kind: 'idle' });
+
+      try {
+        const record = buildSolidLight({
+          r: Number.parseInt(color.slice(1, 3), 16),
+          g: Number.parseInt(color.slice(3, 5), 16),
+          b: Number.parseInt(color.slice(5, 7), 16),
+          brightness,
+        });
+        const result = await transfer.sendLighting(record);
+
+        if (result.busy) {
+          log('A transfer is already running.', 'warn');
+          return;
+        }
+
+        if (isTransportFailed(result.steps)) {
+          setLightingStatus({
+            kind: 'err',
+            message: 'The light may not have been sent. Check the keyboard before trying again.',
+          });
+          log('The light transfer stopped early. Check the keyboard.', 'err');
+          return;
+        }
+
+        const commit = result.steps.find((step) => step.step === 'commit');
+        const status = commit?.reply.status ?? null;
+
+        if (status === STATUS.ok) {
+          setLightingStatus({
+            kind: 'ok',
+            message: `Sent. The keys are ${color.toUpperCase()} at brightness ${brightness}.`,
+          });
+          log(`Light sent: ${color.toUpperCase()}, brightness ${brightness}.`, 'ok');
+          return;
+        }
+
+        setLightingStatus({
+          kind: 'err',
+          message:
+            'The keyboard did not confirm the light. It may have applied anyway; check the keys and apply again if not.',
+        });
+        log(
+          `Light not confirmed (${status === null ? 'no reply' : `0x${hex([status])}`}). It may still have applied.`,
+          'err',
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setLightingStatus({
+          kind: 'err',
+          message: 'The light could not be sent. Nothing changed.',
+        });
+        log(`Light failed: ${message}`, 'err');
+      } finally {
+        busyRef.current = false;
+        setBusy(false);
+      }
+    },
+    [log, transfer],
+  );
+
   const handleOpenAdvanced = useCallback(() => {
     if (!connected || busyRef.current) return;
     setAdvancedOpen(true);
@@ -391,9 +466,9 @@ export function App() {
         <div
           className={cn(
             'mt-5 grid content-start gap-5',
-            view === 'keys'
-              ? 'lg:grid-cols-[minmax(0,1fr)_340px]'
-              : 'lg:grid-cols-[minmax(0,440px)_340px] lg:justify-center',
+            view === 'screen'
+              ? 'lg:grid-cols-[minmax(0,440px)_340px] lg:justify-center'
+              : 'lg:grid-cols-[minmax(0,1fr)_340px]',
           )}
         >
           {view === 'keys' ? (
@@ -433,7 +508,7 @@ export function App() {
                 <WriteRules />
               </div>
             </>
-          ) : (
+          ) : view === 'screen' ? (
             <ScreenPanel
               connected={connected}
               screenReady={device.screenFound}
@@ -444,6 +519,13 @@ export function App() {
               animationSending={animationSending}
               onSend={handleSendTime}
               onSendAnimation={handleSendAnimation}
+            />
+          ) : (
+            <LightingPanel
+              connected={connected}
+              busy={busy}
+              status={lightingStatus}
+              onApply={handleApplyLight}
             />
           )}
         </div>

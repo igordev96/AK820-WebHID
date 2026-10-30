@@ -15,6 +15,7 @@ export const COMMANDS = {
   top: [0x04, 0x11],
   fn: [0x04, 0x27],
   time: [0x04, 0x28],
+  light: [0x04, 0x13],
   animation: [0x04, 0x72],
   commit: [0x04, 0x02],
   end: [0x04, 0xf0],
@@ -44,6 +45,7 @@ export const TIMING = {
   chunkGap: 12,
   chunkAttempts: 4,
   chunkRetry: 250,
+  commitPause: 60,
   screenStartPause: 250,
   screenBlockGap: 150,
 } as const;

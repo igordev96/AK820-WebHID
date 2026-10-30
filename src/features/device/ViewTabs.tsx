@@ -1,10 +1,11 @@
 import { cn } from '@/lib/utils';
 
-export type View = 'keys' | 'screen';
+export type View = 'keys' | 'screen' | 'light';
 
 const views = [
   { id: 'keys', label: 'Keys', note: 'Remap keys on the top and Fn layers.' },
-  { id: 'screen', label: 'Screen', note: 'Set the clock on the keyboard screen.' },
+  { id: 'screen', label: 'Screen', note: 'Set the clock and play GIFs on the keyboard screen.' },
+  { id: 'light', label: 'Lighting', note: 'Set the colour and brightness of the keys.' },
 ] as const;
 
 type ViewTabsProps = {

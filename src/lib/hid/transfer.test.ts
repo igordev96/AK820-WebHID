@@ -1,4 +1,5 @@
 import { FACTORY_KEYS, buildTable } from '@/lib/keymap';
+import { buildSolidLight } from '@/lib/lighting';
 import type { HidReadResult } from '@/lib/hid/client';
 import { SCREEN_BLOCK_SIZE, SCREEN_FRAME_BYTES, buildAnimationPayload } from '@/lib/screen';
 import { FakeClock, FakeTransport, reply } from '@/test/hidFakes';
@@ -335,5 +336,53 @@ describe('TransferService screen', () => {
     expect(announce[8]).toBe(0);
     expect(announce[9]).toBe(1);
     expect(output?.sent).toHaveLength(256);
+  });
+});
+
+const lightReplies = (): HidReadResult[] => [
+  reply(0x18, 0x01),
+  reply(0x13, 0x01),
+  reply(0x02, 0x01),
+  reply(0xf0, 0x01),
+];
+
+describe('TransferService lighting', () => {
+  const record = buildSolidLight({ r: 255, g: 128, b: 0, brightness: 3 });
+
+  it('sends the record as one chunk, then the commit and the end', async () => {
+    const { service, transport } = makeService(lightReplies());
+
+    const result = await service.sendLighting(record);
+
+    expect(result.steps.map((step) => step.step)).toEqual(['begin', 'announce', 'commit', 'end']);
+    expect(isTransportFailed(result.steps)).toBe(false);
+    expect(transport.sent).toHaveLength(5);
+    expect(bytes(transport.sent[0] ?? new Uint8Array())).toEqual([0x04, 0x18]);
+
+    const announce = transport.sent[1] ?? new Uint8Array();
+    expect(bytes(announce.subarray(0, 2))).toEqual([0x04, 0x13]);
+    expect(announce[8]).toBe(1);
+
+    expect(bytes(transport.sent[2] ?? new Uint8Array())).toEqual(bytes(record));
+    expect(bytes(transport.sent[3] ?? new Uint8Array())).toEqual([0x04, 0x02]);
+    expect(bytes(transport.sent[4] ?? new Uint8Array())).toEqual([0x04, 0xf0]);
+  });
+
+  it('shares the lock with a table transfer', async () => {
+    const { service, transport } = makeService(topReplies());
+
+    const first = service.sendTable(table, 'top');
+    const second = await service.sendLighting(record);
+    await first;
+
+    expect(second).toEqual({ steps: [], busy: true });
+    expect(transport.sent).toHaveLength(13);
+    expect(service.isBusy).toBe(false);
+  });
+
+  it('refuses a record that is not 64 bytes', async () => {
+    const { service } = makeService();
+
+    await expect(service.sendLighting(new Uint8Array(10))).rejects.toThrow('64');
   });
 });

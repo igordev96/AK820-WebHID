@@ -438,3 +438,28 @@ Conclusion: `04 F0` does not abort an animation once the announce is accepted. T
 in its loading state until power is removed, and the frames already written stay in the buffer.
 Cancel was removed from the animation card; the page now sends every block and commits, and the
 card tells the user to let it finish.
+
+## Test 15 — keyboard light (30 Oct 2026)
+
+Build: the working tree for lighting v1, dev server on `http://localhost:5173`, Chrome on Windows.
+
+The user applied several colours and brightness levels from the **Lighting** tab. Each apply is:
+
+```
+04 18
+04 13 … 01              announce, one 64-byte chunk
+01 R G B … <brightness> 03 … AA 55
+04 02
+04 F0
+```
+
+The keyboard changed colour and brightness every time, and the user confirmed it by looking at the
+board.
+
+**Issue found.** At brightness 2 the light applied, but the page sometimes reported that the commit
+was not confirmed. The vendor capture leaves about 75 ms between the last chunk and `04 02`; the
+page sent them back to back. A 60 ms pause before the commit was added, and the user confirmed that
+brightness 2 became stable. The failure message was also corrected: an unconfirmed commit no longer
+claims that nothing changed.
+
+Not tested: effect modes and per-key colours. Only the solid colour record (`01 03`) is built.

@@ -15,12 +15,14 @@ src/components/ui/       Button, Popover, Calendar (shadcn patterns over Radix)
 src/lib/keymap/          constants, factory keys, record encoding, names, parsing, table
 src/lib/hid/             protocol, client, collections, WebHID types, transfer, time, probes, raw
 src/lib/screen/          RGB565, frame layout, animation payload
+src/lib/lighting/        the 64-byte solid-light record
 src/lib/editor/          row state, reducer, validation, persistence
 src/lib/clock.ts         Clock type and the real timer
 src/lib/format.ts        hex formatting
 src/features/device/     useDevice, AppHeader, ViewTabs
 src/features/editor/     LayerTabs, KeymapBoard, KeyInspector, PendingBar, WriteRules, keyLabels
 src/features/screen/     ScreenPanel, ScreenPreview, ClockCard, DateTimePicker, AnimationCard
+src/features/lighting/   LightingPanel, LightPreview
 src/features/log/        useLog, LogPanel
 src/features/advanced/   AdvancedDrawer
 src/test/                Vitest setup, fake HID device and fake clock
@@ -77,6 +79,10 @@ the body; the layout is in `docs/01-protocol.md` §9.
 count) go over the feature transport, the 4096-byte blocks go over a separate `OutputTransport`
 bound to the `0xFF68` device, then the commit. Blocks are paced 150 ms apart, which matches the
 vendor's 153 ms. `src/lib/screen` builds the buffer; the layout is in `docs/01-protocol.md` §10.
+
+`TransferService.sendLighting` writes one 64-byte record with the staged runner: `04 18`, `04 13`
+with one chunk, the record, a 60 ms pause, `04 02`, `04 F0`. `src/lib/lighting` builds the record;
+the layout is in `docs/01-protocol.md` §11.
 
 `TransferService` owns the transfer lock. A second `sendTable` or `sendTime` call returns
 `{ busy: true }` instead of interleaving. `App` also keeps one busy flag for uploads, clock writes
@@ -174,6 +180,7 @@ the same log and set the app busy flag through `onBusyChange`.
 | `src/lib/hid/transfer.test.ts` | the full sequence, abort paths, busy lock, byte order, clock |
 | `src/lib/hid/time.test.ts` | clock body, year offset, weekday, input parser |
 | `src/lib/screen/animation.test.ts` | RGB565, header, delays, frame placement |
+| `src/lib/lighting/record.test.ts` | solid-light bytes, colour order, ranges |
 | `src/lib/hid/collections.test.ts` | flattening and config collection lookup |
 | `src/lib/hid/diagnostics.test.ts` | pass, refused write, silent read, missing collection |
 | `src/lib/hid/deepProbe.test.ts` | echo, silent device |
@@ -187,6 +194,7 @@ the same log and set the app busy flag through `onBusyChange`.
 | `src/features/screen/ClockCard.test.tsx` | clock modes, validation, status, busy state |
 | `src/features/screen/DateTimePicker.test.tsx` | day and time selection, Now, close |
 | `src/features/screen/ScreenPanel.test.tsx` | preview, custom input, send payload |
+| `src/features/lighting/LightingPanel.test.tsx` | colour, brightness, preview labels, status |
 | `src/App.test.tsx` | offline editing, layers, log |
 | `src/App.upload.test.tsx` | fake HID end to end: connect, edit, upload, commit |
 | `src/App.screen.test.tsx` | view switch and a fake-HID clock send |
@@ -225,6 +233,9 @@ All five must pass before a commit.
 14. **An animation upload is never interrupted.** Once the announce is accepted, the firmware
     expects every block. `04 F0` does not abort it, the keyboard stops responding until replug, and
     the frames already written stay. No cancel button, no signal, no timeout.
+15. **The light is one 64-byte record with `AA 55` at offset 14.** Announce `04 13` with one chunk,
+    then commit and end. Leave 60 ms before the commit; sending it immediately after the chunk
+    caused intermittent unconfirmed commits.
 
 ## 9. Common changes
 
