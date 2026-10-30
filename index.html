@@ -5,11 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
     <meta name="theme-color" content="#0f1216" />
+    <title>AK820 Pro WebHID configurator</title>
+    <meta
+      name="description"
+      content="Unofficial browser configurator for the AJAZZ AK820 Pro: key remap, Fn overrides, screen clock and GIFs. No install, USB and Chrome only."
+    />
+    <link rel="canonical" href="https://ak820-webhid.netlify.app/" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>AK820 Pro WebHID key remapper</title>
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="AK820 Pro WebHID configurator" />
+    <meta property="og:title" content="AK820 Pro WebHID configurator" />
+    <meta
+      property="og:description"
+      content="Remap keys, set Fn overrides, set the screen clock and play GIFs on the AJAZZ AK820 Pro. No install, USB and Chrome only."
+    />
+    <meta property="og:url" content="https://ak820-webhid.netlify.app/" />
+    <meta property="og:image" content="https://ak820-webhid.netlify.app/og.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <p>
+        This configurator needs JavaScript and WebHID. Open it in Chrome, Edge or Opera on a
+        desktop, with the keyboard connected by USB.
+      </p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

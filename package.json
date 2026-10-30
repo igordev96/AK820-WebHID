@@ -2,7 +2,7 @@
   "name": "ak820-webhid",
   "version": "2.2.2",
   "private": true,
-  "description": "Unofficial WebHID key remapper for the AJAZZ AK820 Pro",
+  "description": "Unofficial WebHID configurator for the AJAZZ AK820 Pro",
   "license": "MIT",
   "type": "module",
   "scripts": {

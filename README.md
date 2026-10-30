@@ -1,4 +1,4 @@
-# AK820 Pro WebHID key remapper
+# AK820 Pro WebHID configurator
 
 [![CI](https://github.com/igordev96/AK820-WebHID/actions/workflows/ci.yml/badge.svg)](https://github.com/igordev96/AK820-WebHID/actions/workflows/ci.yml)
 [![Netlify deploy status](https://api.netlify.com/api/v1/badges/453ffc69-2e90-4f4b-a2c5-5d7e4616ca22/deploy-status)](https://app.netlify.com/sites/ak820-webhid/deploys)
@@ -7,25 +7,31 @@
 
 ![AK820 WebHID cover: a rendered keyboard beside the title and a Zero drivers badge](docs/assets/ak820-webhid-cover.jpg)
 
-An unofficial browser tool for remapping the AJAZZ AK820 Pro. It talks to the keyboard's
-configuration interface over WebHID, so there is nothing to install and no admin rights to ask
-for. It runs in Chrome, Edge or Opera on desktop.
+An unofficial browser configurator for the AJAZZ AK820 Pro, also sold under the Epomaker name.
+Remap keys, set Fn overrides, set the screen clock and play GIFs on the 128 × 128 screen. It talks
+to the keyboard's configuration interface over WebHID, so there is nothing to install and no admin
+rights to ask for.
 
-A hosted copy runs at <https://ak820-webhid.netlify.app/>. It is the same build as this repository.
+## Use it online
+
+Open <https://ak820-webhid.netlify.app/> in Chrome, Edge or Opera, with the keyboard on USB and the
+vendor app closed. That is the whole setup.
+
+Developers: see [Quick start](#quick-start).
 
 AK820 Pro is a trademark of its owner. This project is not affiliated with AJAZZ. The tool writes
 the key table, so keep the vendor application available for recovery.
 
 ## Status
 
-Version 2.0.0 is a Vite, React and TypeScript rewrite of the v1.0.1 single-file app. The key table,
-the transfer sequence and the wire bytes are unchanged. The new build has passed tests against a
-fake device, and hardware Test 9 passed on 29 Oct 2026: top layer, Fn media override, both restore
-actions and the upload lock were checked on the board. The screen clock was added the same day and
-confirmed on the board in Test 10, for both this computer's time and a time picked by hand. Test 11
-added the screen data channel with one 128 × 128 picture, Test 12 played a 31-frame GIF, and Test 13
-played a 60-frame GIF after the 16-bit block count was fixed. Test 14 showed that interrupting an
-upload wedges the keyboard until it is unplugged, so the animation card has no cancel.
+The app is a Vite, React and TypeScript rewrite of the v1.0.1 single-file app. The key table, the
+transfer sequence and the wire bytes are unchanged. The build has passed tests against a fake
+device, and hardware Test 9 passed on 29 Oct 2026: top layer, Fn media override, both restore
+actions and the upload lock. The screen clock was added the same day and confirmed in Test 10, for
+this computer's time and a time picked by hand. Test 11 added the screen data channel with one
+128 × 128 picture, Test 12 played a 31-frame GIF, and Test 13 played a 60-frame GIF after the 16-bit
+block count was fixed. Test 14 showed that interrupting an upload wedges the keyboard until it is
+unplugged, so the animation card has no cancel.
 [docs/02-hardware-tests.md](docs/02-hardware-tests.md) records the evidence.
 
 ## What it does
@@ -48,7 +54,8 @@ consumer functions use the same record format but were not each tested.
 ## Supported devices
 
 VID `0C45` with PID `8009` (tested), `800A` or `FDFD`. Only the `8009` board has been used on
-hardware. Other AK820 variants may share the protocol, but they have not been tested.
+hardware, and it is the ANSI US model with 81 keys. Other layouts and variants may share the
+protocol, but they have not been tried.
 
 ## What it cannot do
 

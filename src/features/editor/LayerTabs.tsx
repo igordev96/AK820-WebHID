@@ -6,7 +6,7 @@ const layers = [
   {
     id: 'fn',
     label: 'Fn layer',
-    note: 'Only the keys you change are sent. Every other Fn combination stays with the firmware.',
+    note: 'Only the keys you change are sent. Every other Fn combination stays with the firmware. Overrides are remembered in this browser.',
   },
 ] as const;
 

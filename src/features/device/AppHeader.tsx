@@ -58,7 +58,7 @@ export function AppHeader({
           </span>
           <div className="min-w-0 leading-tight">
             <p className="truncate text-sm font-semibold tracking-[-0.01em]">AK820 Pro</p>
-            <p className="hidden text-[11px] text-muted sm:block">Key remapper and screen clock</p>
+            <p className="hidden text-[11px] text-muted sm:block">Keys, Fn and screen</p>
           </div>
         </div>
 
