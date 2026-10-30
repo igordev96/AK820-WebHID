@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useReducer, useRef, useState } from 'react';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { AdvancedDrawer } from '@/features/advanced/AdvancedDrawer';
 import { AppHeader } from '@/features/device/AppHeader';
 import { ViewTabs, type View } from '@/features/device/ViewTabs';
@@ -35,7 +36,6 @@ import { HidClient, STATUS, TransferService, formatClock, isTransportFailed } fr
 import { FN_LOCKED, buildTable } from '@/lib/keymap';
 import { LIGHT_MODES, LIGHT_MODE_OFF, buildLightRecord } from '@/lib/lighting';
 import { buildAnimationPayload } from '@/lib/screen';
-import { cn } from '@/lib/utils';
 
 function loadInitialState(storage: StorageLike | null): EditorState {
   if (!storage) return createInitialState();
@@ -475,27 +475,33 @@ export function App() {
       ) : null}
 
       <main className="mx-auto w-full max-w-[1320px] flex-1 px-4 py-6">
-        <ViewTabs view={view} disabled={busy} onChange={setView} />
+        <Tabs value={view} onValueChange={(next) => setView(next as View)}>
+          <ViewTabs view={view} disabled={busy} />
 
-        <div
-          className={cn(
-            'mt-5 grid content-start gap-5',
-            view === 'screen'
-              ? 'lg:grid-cols-[minmax(0,440px)_340px] lg:justify-center'
-              : 'lg:grid-cols-[minmax(0,1fr)_340px]',
-          )}
-        >
-          {view === 'keys' ? (
-            <>
+          <TabsContent value="keys">
+            <div className="mt-5 grid content-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
               <section className="flex min-w-0 flex-col gap-4">
-                <LayerTabs layer={state.layer} disabled={busy} onChange={handleLayer} />
-                <KeymapBoard
-                  rows={rows}
-                  layer={state.layer}
-                  selected={state.selected}
-                  disabled={busy}
-                  onSelect={handleSelect}
-                />
+                <Tabs value={state.layer} onValueChange={(next) => handleLayer(next as Layer)}>
+                  <LayerTabs layer={state.layer} disabled={busy} />
+                  <TabsContent value="top">
+                    <KeymapBoard
+                      rows={rows}
+                      layer={state.layer}
+                      selected={state.selected}
+                      disabled={busy}
+                      onSelect={handleSelect}
+                    />
+                  </TabsContent>
+                  <TabsContent value="fn">
+                    <KeymapBoard
+                      rows={rows}
+                      layer={state.layer}
+                      selected={state.selected}
+                      disabled={busy}
+                      onSelect={handleSelect}
+                    />
+                  </TabsContent>
+                </Tabs>
                 <PendingBar
                   layer={state.layer}
                   pendingCount={pendingCount}
@@ -521,28 +527,36 @@ export function App() {
                 />
                 <WriteRules />
               </div>
-            </>
-          ) : view === 'screen' ? (
-            <ScreenPanel
-              connected={connected}
-              screenReady={device.screenFound}
-              busy={busy}
-              status={timeStatus}
-              animationStatus={animationStatus}
-              animationProgress={animationProgress}
-              animationSending={animationSending}
-              onSend={handleSendTime}
-              onSendAnimation={handleSendAnimation}
-            />
-          ) : (
-            <LightingPanel
-              connected={connected}
-              busy={busy}
-              status={lightingStatus}
-              onApply={handleApplyLight}
-            />
-          )}
-        </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="screen">
+            <div className="mt-5 grid content-start gap-5 lg:grid-cols-[minmax(0,440px)_340px] lg:justify-center">
+              <ScreenPanel
+                connected={connected}
+                screenReady={device.screenFound}
+                busy={busy}
+                status={timeStatus}
+                animationStatus={animationStatus}
+                animationProgress={animationProgress}
+                animationSending={animationSending}
+                onSend={handleSendTime}
+                onSendAnimation={handleSendAnimation}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="light">
+            <div className="mt-5 grid content-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+              <LightingPanel
+                connected={connected}
+                busy={busy}
+                status={lightingStatus}
+                onApply={handleApplyLight}
+              />
+            </div>
+          </TabsContent>
+        </Tabs>
       </main>
 
       <LogPanel

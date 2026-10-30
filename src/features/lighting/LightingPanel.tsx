@@ -1,6 +1,16 @@
 import { useState } from 'react';
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   LIGHT_MAX_BRIGHTNESS,
   LIGHT_MAX_SPEED,
@@ -9,7 +19,6 @@ import {
   LIGHT_MODES,
   LIGHT_MODE_OFF,
 } from '@/lib/lighting';
-import { cn } from '@/lib/utils';
 import { LightPreview } from './LightPreview';
 
 export type LightingStatus =
@@ -66,15 +75,16 @@ export function LightingPanel({ connected, busy, status, onApply }: LightingPane
           <LightPreview
             color={color}
             brightness={brightness}
+            speed={speed}
             colorful={colorful && !off}
             off={off}
+            mode={mode}
+            direction={direction}
           />
           <p className="mt-3 px-1 text-[11px] leading-relaxed text-muted">
             {off
               ? 'The light will be off.'
-              : colorful
-                ? 'The keyboard cycles through colours. The preview shows one arrangement.'
-                : 'The preview shows the colour. The effect itself runs on the keyboard.'}
+              : 'The preview approximates the effect. The keyboard runs the firmware version.'}
           </p>
         </div>
       </section>
@@ -87,19 +97,18 @@ export function LightingPanel({ connected, busy, status, onApply }: LightingPane
             <label htmlFor="light-mode" className="block text-xs text-muted">
               Effect
             </label>
-            <select
-              id="light-mode"
-              value={mode}
-              disabled={busy}
-              className="h-9 w-full rounded-control border border-line bg-ink px-3 text-sm text-ivory disabled:cursor-not-allowed disabled:opacity-40"
-              onChange={(event) => changeMode(Number(event.currentTarget.value))}
-            >
-              {LIGHT_MODES.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
+            <Select value={String(mode)} onValueChange={(value) => changeMode(Number(value))}>
+              <SelectTrigger id="light-mode" aria-label="Effect" disabled={busy}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LIGHT_MODES.map((item) => (
+                  <SelectItem key={item.id} value={String(item.id)}>
+                    {item.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {entry.color ? (
@@ -121,16 +130,18 @@ export function LightingPanel({ connected, busy, status, onApply }: LightingPane
               </div>
 
               {entry.colorful ? (
-                <label className="flex cursor-pointer items-center gap-2 text-xs text-muted">
-                  <input
-                    type="checkbox"
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="light-colorful"
                     checked={colorful}
                     disabled={controlsDisabled}
-                    className="size-4 accent-brass"
-                    onChange={(event) => setColorful(event.currentTarget.checked)}
+                    aria-labelledby="light-colorful-label"
+                    onCheckedChange={(checked) => setColorful(checked === true)}
                   />
-                  Colourful
-                </label>
+                  <span id="light-colorful-label" className="text-xs text-muted">
+                    Colourful
+                  </span>
+                </div>
               ) : null}
             </div>
           ) : null}
@@ -142,16 +153,15 @@ export function LightingPanel({ connected, busy, status, onApply }: LightingPane
               </label>
               <span className="font-mono text-[11px] text-ivory/80">{brightness}</span>
             </div>
-            <input
+            <Slider
               id="light-brightness"
-              type="range"
+              aria-label="Brightness"
               min={LIGHT_MIN_BRIGHTNESS}
               max={LIGHT_MAX_BRIGHTNESS}
               step={1}
-              value={brightness}
+              value={[brightness]}
               disabled={controlsDisabled}
-              className="h-1.5 w-full cursor-pointer accent-brass disabled:cursor-not-allowed disabled:opacity-40"
-              onChange={(event) => setBrightness(Number(event.currentTarget.value))}
+              onValueChange={([value]) => setBrightness(value ?? LIGHT_MIN_BRIGHTNESS)}
             />
             <div className="flex justify-between font-mono text-[10px] text-muted">
               <span>{LIGHT_MIN_BRIGHTNESS}</span>
@@ -167,16 +177,15 @@ export function LightingPanel({ connected, busy, status, onApply }: LightingPane
                 </label>
                 <span className="font-mono text-[11px] text-ivory/80">{speed}</span>
               </div>
-              <input
+              <Slider
                 id="light-speed"
-                type="range"
+                aria-label="Speed"
                 min={LIGHT_MIN_SPEED}
                 max={LIGHT_MAX_SPEED}
                 step={1}
-                value={speed}
+                value={[speed]}
                 disabled={controlsDisabled}
-                className="h-1.5 w-full cursor-pointer accent-brass disabled:cursor-not-allowed disabled:opacity-40"
-                onChange={(event) => setSpeed(Number(event.currentTarget.value))}
+                onValueChange={([value]) => setSpeed(value ?? LIGHT_MIN_SPEED)}
               />
             </div>
           ) : null}
@@ -184,35 +193,32 @@ export function LightingPanel({ connected, busy, status, onApply }: LightingPane
           {entry.direction !== 'none' ? (
             <div className="mt-4 space-y-1.5">
               <span className="block text-xs text-muted">Direction</span>
-              <div className="inline-flex rounded-control border border-line bg-ink p-1">
+              <ToggleGroup
+                type="single"
+                aria-label="Direction"
+                value={String(direction)}
+                disabled={controlsDisabled}
+                onValueChange={(value) => {
+                  if (value) setDirection(Number(value));
+                }}
+                className="inline-flex rounded-control border border-line bg-ink p-1"
+              >
                 {(entry.direction === 'vertical'
                   ? [
-                      { value: 2, label: 'Up', Icon: ArrowUp },
-                      { value: 3, label: 'Down', Icon: ArrowDown },
+                      { value: '2', label: 'Up', Icon: ArrowUp },
+                      { value: '3', label: 'Down', Icon: ArrowDown },
                     ]
                   : [
-                      { value: 1, label: 'Left', Icon: ArrowLeft },
-                      { value: 0, label: 'Right', Icon: ArrowRight },
+                      { value: '1', label: 'Left', Icon: ArrowLeft },
+                      { value: '0', label: 'Right', Icon: ArrowRight },
                     ]
                 ).map(({ value, label, Icon }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    aria-pressed={direction === value}
-                    disabled={controlsDisabled}
-                    className={cn(
-                      'inline-flex h-7 items-center gap-1.5 rounded-[6px] px-3 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40',
-                      direction === value
-                        ? 'bg-keycap text-ivory shadow-[inset_0_-1px_0_rgba(0,0,0,0.4)]'
-                        : 'text-muted hover:text-ivory',
-                    )}
-                    onClick={() => setDirection(value)}
-                  >
+                  <ToggleGroupItem key={value} value={value} disabled={controlsDisabled}>
                     <Icon aria-hidden="true" className="size-3.5" />
                     {label}
-                  </button>
+                  </ToggleGroupItem>
                 ))}
-              </div>
+              </ToggleGroup>
             </div>
           ) : null}
 

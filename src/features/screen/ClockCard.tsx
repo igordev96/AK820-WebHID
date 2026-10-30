@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { buildTimePacket, formatClock } from '@/lib/hid';
-import { cn } from '@/lib/utils';
 import { DateTimePicker } from './DateTimePicker';
 
 export type ClockMode = 'now' | 'custom';
@@ -21,11 +21,6 @@ export type ClockCardProps = {
   onSend: () => void;
 };
 
-const modes = [
-  { id: 'now', label: 'Now' },
-  { id: 'custom', label: 'Custom' },
-] as const;
-
 const byte = (value: number) => value.toString(16).toUpperCase().padStart(2, '0');
 
 export function ClockCard({
@@ -43,54 +38,42 @@ export function ClockCard({
 
   return (
     <aside className="h-fit rounded-panel border border-line bg-surface p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold">Set the clock</h2>
-        <div
-          className="inline-flex rounded-control border border-line bg-ink p-1"
-          role="tablist"
-          aria-label="Clock source"
-        >
-          {modes.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              aria-selected={mode === item.id}
-              disabled={busy}
-              className={cn(
-                'h-7 rounded-[6px] px-3 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
-                mode === item.id
-                  ? 'bg-keycap text-ivory shadow-[inset_0_-1px_0_rgba(0,0,0,0.4)]'
-                  : 'text-muted hover:text-ivory',
-              )}
-              onClick={() => onModeChange(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
+      <Tabs value={mode} onValueChange={(next) => onModeChange(next as ClockMode)}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold">Set the clock</h2>
+          <TabsList aria-label="Clock source">
+            <TabsTrigger value="now" disabled={busy}>
+              Now
+            </TabsTrigger>
+            <TabsTrigger value="custom" disabled={busy}>
+              Custom
+            </TabsTrigger>
+          </TabsList>
         </div>
-      </div>
 
-      {mode === 'now' ? (
-        <div className="mt-4 rounded-control border border-line bg-ink px-3 py-2.5">
-          <p className="font-mono text-lg leading-none">{formatClock(preview)}</p>
-          <p className="mt-1.5 text-[11px] text-muted">This computer's local time.</p>
-        </div>
-      ) : (
-        <div className="mt-4 space-y-1.5">
-          <span id="screen-time-label" className="block text-xs text-muted">
-            Date and time
-          </span>
-          <DateTimePicker
-            id="screen-time"
-            labelledBy="screen-time-label"
-            value={preview}
-            disabled={busy}
-            onChange={onCustomChange}
-          />
-          <p className="text-[11px] text-muted">Local time, 2000 to 2099.</p>
-        </div>
-      )}
+        <TabsContent value="now">
+          <div className="mt-4 rounded-control border border-line bg-ink px-3 py-2.5">
+            <p className="font-mono text-lg leading-none">{formatClock(preview)}</p>
+            <p className="mt-1.5 text-[11px] text-muted">This computer's local time.</p>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="custom">
+          <div className="mt-4 space-y-1.5">
+            <span id="screen-time-label" className="block text-xs text-muted">
+              Date and time
+            </span>
+            <DateTimePicker
+              id="screen-time"
+              labelledBy="screen-time-label"
+              value={preview}
+              disabled={busy}
+              onChange={onCustomChange}
+            />
+            <p className="text-[11px] text-muted">Local time, 2000 to 2099.</p>
+          </div>
+        </TabsContent>
+      </Tabs>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <Button disabled={!canSend} onClick={onSend}>

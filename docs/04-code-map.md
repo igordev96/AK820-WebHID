@@ -11,7 +11,7 @@ index.html               Vite entry, mounts /src/main.tsx
 src/main.tsx             React root, fonts and global styles
 src/App.tsx              page composition, upload and restore, drawer state
 src/styles/globals.css   colour, type and radius tokens, bench mat, base styles
-src/components/ui/       Button, Popover, Calendar (shadcn patterns over Radix)
+src/components/ui/       Button, Popover, Calendar, Tabs, Checkbox, Slider, Select, ToggleGroup
 src/lib/keymap/          constants, factory keys, record encoding, names, parsing, table
 src/lib/hid/             protocol, client, collections, WebHID types, transfer, time, probes, raw
 src/lib/screen/          RGB565, frame layout, animation payload
@@ -163,8 +163,11 @@ because the firmware cannot abort a stream it has started. The card is disabled 
 return the `0xFF68` interface.
 
 `LightingPanel` shows the 20 effects. Each mode's controls come from the vendor database:
-colour and Colourful, brightness, speed, and the direction pair for its axis. `LightPreview` is the
-real 81-key board tinted, or a rainbow when Colourful is on.
+colour and Colourful, brightness, speed, and the direction pair for its axis. The controls are
+shadcn-style Radix primitives, so tabs own their panels, sliders expose their values and the
+select is keyboard-driven. `LightPreview` is the real 81-key board; it animates an approximation
+of the selected effect from the mode, speed, direction, brightness and Colourful state, and stops
+under `prefers-reduced-motion`.
 
 `AdvancedDrawer` holds four tabs: diagnostics, deep probe, mailbox and raw command. It takes a
 `clock` prop, which is the real clock in the app and a fake clock in tests. Probes report through

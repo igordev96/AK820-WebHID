@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { LightingPanel } from './LightingPanel';
@@ -13,6 +13,11 @@ const renderPanel = (overrides: Partial<Parameters<typeof LightingPanel>[0]> = {
       {...overrides}
     />,
   );
+
+const chooseEffect = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
+  await user.click(screen.getByRole('combobox', { name: 'Effect' }));
+  await user.click(await screen.findByRole('option', { name }));
+};
 
 describe('LightingPanel', () => {
   it('shows the keyboard preview with key labels', () => {
@@ -45,12 +50,15 @@ describe('LightingPanel', () => {
     const user = userEvent.setup();
     renderPanel({ onApply });
 
-    await user.selectOptions(screen.getByLabelText('Effect'), '10');
-    expect(screen.getByLabelText('Speed')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /up/i })).toHaveAttribute('aria-pressed', 'true');
+    await chooseEffect(user, 'Scrolling');
 
-    fireEvent.change(screen.getByLabelText('Speed'), { target: { value: '5' } });
-    await user.click(screen.getByRole('button', { name: /down/i }));
+    const speed = screen.getByRole('slider', { name: 'Speed' });
+    speed.focus();
+    await user.keyboard('{End}');
+
+    const down = screen.getByRole('radio', { name: /down/i });
+    await user.click(down);
+
     await user.click(screen.getByRole('button', { name: 'Apply light' }));
 
     expect(onApply).toHaveBeenCalledWith({
@@ -67,21 +75,22 @@ describe('LightingPanel', () => {
     const user = userEvent.setup();
     renderPanel();
 
-    await user.selectOptions(screen.getByLabelText('Effect'), '6');
+    await chooseEffect(user, 'Colourful');
 
     expect(screen.queryByLabelText('Colour')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Speed')).toBeInTheDocument();
+    expect(screen.getByRole('slider', { name: 'Speed' })).toBeInTheDocument();
   });
 
   it('disables the colour while Colourful is on', async () => {
     const user = userEvent.setup();
     renderPanel();
 
-    await user.selectOptions(screen.getByLabelText('Effect'), '7');
-    expect(screen.getByRole('checkbox', { name: 'Colourful' })).toBeChecked();
+    await chooseEffect(user, 'Breath');
+    const colourful = screen.getByRole('checkbox', { name: 'Colourful' });
+    expect(colourful).toBeChecked();
     expect(screen.getByLabelText('Colour')).toBeDisabled();
 
-    await user.click(screen.getByRole('checkbox', { name: 'Colourful' }));
+    await user.click(colourful);
     expect(screen.getByLabelText('Colour')).toBeEnabled();
   });
 
@@ -89,10 +98,10 @@ describe('LightingPanel', () => {
     const user = userEvent.setup();
     renderPanel();
 
-    await user.selectOptions(screen.getByLabelText('Effect'), '20');
+    await chooseEffect(user, 'LED off');
 
     expect(screen.getByRole('img', { name: /keyboard light preview: off/i })).toBeInTheDocument();
-    expect(screen.getByLabelText('Brightness')).toBeDisabled();
+    expect(screen.getByRole('slider', { name: 'Brightness' })).toHaveAttribute('data-disabled');
   });
 
   it('asks for a connection before offering a write', () => {

@@ -100,3 +100,60 @@
       inset 0 16px 36px rgb(0 0 0 / 0.35);
   }
 }
+
+@keyframes light-wave {
+  0%,
+  100% {
+    opacity: var(--light-dim, 0.35);
+  }
+  50% {
+    opacity: var(--light-bright, 1);
+  }
+}
+
+@keyframes light-twinkle {
+  0%,
+  100% {
+    opacity: var(--light-dim, 0.3);
+  }
+  20% {
+    opacity: var(--light-bright, 1);
+  }
+  40% {
+    opacity: var(--light-dim, 0.3);
+  }
+  70% {
+    opacity: calc((var(--light-dim, 0.3) + var(--light-bright, 1)) / 2);
+  }
+}
+
+@keyframes light-hue {
+  from {
+    filter: hue-rotate(0deg);
+  }
+  to {
+    filter: hue-rotate(360deg);
+  }
+}
+
+.light-wave {
+  animation: light-wave var(--light-duration, 4s) ease-in-out infinite;
+}
+
+.light-twinkle {
+  animation: light-twinkle var(--light-duration, 2s) ease-in-out infinite;
+}
+
+.light-hue {
+  animation: light-hue 8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .light-wave,
+  .light-twinkle,
+  .light-hue {
+    animation: none;
+    opacity: 1;
+    filter: none;
+  }
+}
