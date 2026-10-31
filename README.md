@@ -183,6 +183,8 @@ claims a change reached the keyboard when it did not.
 An older version kept the two layers in separate keys. They are read once and rewritten in the
 current shape on the first change.
 
+The layer you were editing is not saved. The app opens on the top layer, where most edits start.
+
 The log is deliberately not kept: lines from an earlier session would describe a device state this
 page never saw.
 

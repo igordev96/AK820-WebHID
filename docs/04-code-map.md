@@ -156,7 +156,8 @@ layer's factory value. `App` writes the object from an effect on the editor stat
 is remembered at once and `applied` is remembered when `uploaded` moves it. That is why a reload
 can show a pending change on either layer without implying it reached the keyboard.
 `createInitialState` takes the loaded object and seeds each row's `usage` from `draft` and
-`applied` from `applied`.
+`applied` from `applied`. The active layer and the selected key are not stored, so the editor always
+opens on the top layer with nothing selected.
 
 The older keys, `ak820.fn.overrides` and `ak820.top.layer`, are still read once when the new object
 is missing, then removed after the first successful write. The Fn rows arrive as both halves, which
