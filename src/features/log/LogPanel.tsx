@@ -42,7 +42,7 @@ export function LogPanel({ entries, open, onToggle, onClear }: LogPanelProps) {
 
   return (
     <footer id="log-panel" className="border-t border-line">
-      <div className="mx-auto w-full max-w-[1280px] px-4">
+      <div className="mx-auto w-full max-w-page px-4">
         <div className="flex h-11 items-center gap-4">
           <button
             type="button"

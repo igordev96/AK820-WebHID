@@ -51,7 +51,7 @@ export function AppHeader({
 
   return (
     <header className="border-b border-line">
-      <div className="mx-auto flex h-14 w-full max-w-[1280px] items-center justify-between gap-4 px-4">
+      <div className="mx-auto flex h-14 w-full max-w-page items-center justify-between gap-4 px-4">
         <div className="flex min-w-0 items-center gap-3">
           <span className="flex size-8 shrink-0 items-center justify-center rounded-key border border-line bg-keycap text-brass shadow-[inset_0_-2px_0_rgba(0,0,0,0.45)]">
             <Usb aria-hidden="true" />

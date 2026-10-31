@@ -16,6 +16,7 @@
     "tailwindcss/enforce-canonical": "error",
     "tailwindcss/no-deprecated-classes": "error",
     "tailwindcss/no-unnecessary-arbitrary-value": "error",
+    "tailwindcss/prefer-scale-token": "error",
     "tailwindcss/enforce-shorthand": "error"
   },
   "settings": {

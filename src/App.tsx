@@ -508,7 +508,7 @@ export function App() {
         </div>
       ) : null}
 
-      <main className="mx-auto w-full max-w-[1320px] flex-1 px-4 py-6">
+      <main className="mx-auto w-full max-w-page flex-1 px-4 py-6">
         <Tabs value={view} onValueChange={(next) => updateSettings({ view: next as View })}>
           <ViewTabs view={view} disabled={busy} />
 

@@ -46,7 +46,7 @@ export function KeymapBoard({ rows, layer, selected, disabled, onSelect }: Keyma
 
       <div
         ref={container}
-        className="bench-mat overflow-hidden rounded-[8px] border border-line/70 p-2 sm:p-3"
+        className="bench-mat overflow-hidden rounded-control border border-line/70 p-2 sm:p-3"
       >
         <div className="overflow-x-auto">
           <div
@@ -93,7 +93,7 @@ export function KeymapBoard({ rows, layer, selected, disabled, onSelect }: Keyma
                     disabled={locked || disabled}
                     title={title}
                     className={cn(
-                      'absolute flex items-center justify-center overflow-hidden rounded-key border px-[2px] text-center leading-none transition-colors',
+                      'absolute flex items-center justify-center overflow-hidden rounded-key border px-0.5 text-center leading-none transition-colors',
                       locked
                         ? 'cursor-not-allowed border-line/50 bg-surface/50 text-muted/35'
                         : cn(
@@ -159,7 +159,7 @@ export function KeymapBoard({ rows, layer, selected, disabled, onSelect }: Keyma
             className="relative size-3 rounded-[3px] border border-line bg-keycap shadow-[inset_0_-1px_0_rgba(0,0,0,0.45)]"
             aria-hidden="true"
           >
-            <span className="absolute right-[2px] top-[2px] size-1 rounded-full bg-brass" />
+            <span className="absolute right-0.5 top-0.5 size-1 rounded-full bg-brass" />
           </span>
           Pending upload
         </span>

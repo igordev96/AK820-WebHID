@@ -21,6 +21,8 @@
   --radius-panel: 12px;
   --radius-control: 8px;
   --radius-key: 5px;
+
+  --container-page: 1320px;
 }
 
 @layer base {
