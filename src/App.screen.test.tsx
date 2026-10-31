@@ -63,7 +63,7 @@ describe('App screen view', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Screen' }));
     expect(screen.queryByRole('group', { name: /keyboard board/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('img', { name: /screen preview showing/i })).toBeInTheDocument();
+    expect(await screen.findByRole('img', { name: /screen preview showing/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'Keys' }));
     expect(screen.getByRole('group', { name: /keyboard board/i })).toBeInTheDocument();
@@ -76,7 +76,7 @@ describe('App screen view', () => {
     await connect(user);
 
     await user.click(screen.getByRole('tab', { name: 'Screen' }));
-    await user.click(screen.getByRole('button', { name: 'Send time' }));
+    await user.click(await screen.findByRole('button', { name: 'Send time' }));
 
     await screen.findByText(
       /Sent\. The screen clock is set to \d{2}:\d{2}:\d{2}\./,

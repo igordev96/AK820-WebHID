@@ -219,6 +219,12 @@ exercises it on the board.
 `npm run verify` runs the typecheck, the linter, the format check, Vitest and the production build.
 All five must pass before a commit.
 
+`src/App.tsx` loads the screen panel, the lighting panel and the advanced drawer with
+`React.lazy`, so the first visit downloads the key editor alone: about 108 kB gzipped instead of
+166 kB. The drawer chunk is warmed when a keyboard connects, because it cannot open before that.
+A lazy panel shows a short `Loading the … panel` placeholder while its chunk arrives, which is why
+the app tests wait with `findBy` after switching views.
+
 ## 8. Invariants
 
 1. **One transfer at a time.** `TransferService` owns the lock; the app busy flag serializes probes

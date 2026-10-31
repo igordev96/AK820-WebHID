@@ -1,6 +1,5 @@
-import { useCallback, useMemo, useReducer, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useMemo, useReducer, useRef, useState } from 'react';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { AdvancedDrawer } from '@/features/advanced/AdvancedDrawer';
 import { AppHeader } from '@/features/device/AppHeader';
 import { ViewTabs, type View } from '@/features/device/ViewTabs';
 import { useDevice } from '@/features/device/useDevice';
@@ -11,9 +10,7 @@ import { PendingBar } from '@/features/editor/PendingBar';
 import { WriteRules } from '@/features/editor/WriteRules';
 import { LogPanel } from '@/features/log/LogPanel';
 import { useLog } from '@/features/log/useLog';
-import { LightingPanel } from '@/features/lighting/LightingPanel';
 import type { LightingStatus, LightingValues } from '@/features/lighting/LightingPanel';
-import { ScreenPanel } from '@/features/screen/ScreenPanel';
 import type { ScreenStatus } from '@/features/screen/AnimationCard';
 import type { TimeStatus } from '@/features/screen/ClockCard';
 import { realClock } from '@/lib/clock';
@@ -36,6 +33,32 @@ import { HidClient, STATUS, TransferService, formatClock, isTransportFailed } fr
 import { FN_LOCKED, buildTable } from '@/lib/keymap';
 import { LIGHT_MODES, LIGHT_MODE_OFF, buildLightRecord } from '@/lib/lighting';
 import { buildAnimationPayload } from '@/lib/screen';
+
+// The three view panels and the drawer load on demand. A visitor who only remaps
+// keys never downloads the calendar, the lighting controls or the probes.
+const AdvancedDrawer = lazy(() =>
+  import('@/features/advanced/AdvancedDrawer').then((module) => ({
+    default: module.AdvancedDrawer,
+  })),
+);
+
+const ScreenPanel = lazy(() =>
+  import('@/features/screen/ScreenPanel').then((module) => ({ default: module.ScreenPanel })),
+);
+
+const LightingPanel = lazy(() =>
+  import('@/features/lighting/LightingPanel').then((module) => ({
+    default: module.LightingPanel,
+  })),
+);
+
+function PanelLoading({ label }: { label: string }) {
+  return (
+    <div className="mt-5 flex min-h-40 items-center justify-center rounded-panel border border-line bg-surface text-xs text-muted">
+      Loading the {label} panel…
+    </div>
+  );
+}
 
 function loadInitialState(storage: StorageLike | null): EditorState {
   if (!storage) return createInitialState();
@@ -440,6 +463,9 @@ export function App() {
 
   const handleConnect = useCallback(() => {
     void device.connect();
+    // The drawer is only reachable while connected, so warm its chunk now and
+    // the first click opens it without a fetch.
+    void import('@/features/advanced/AdvancedDrawer').catch(() => {});
   }, [device]);
 
   const handleDisconnect = useCallback(() => {
@@ -531,30 +557,34 @@ export function App() {
           </TabsContent>
 
           <TabsContent value="screen">
-            <div className="mt-5 grid content-start gap-5 lg:grid-cols-[minmax(0,440px)_340px] lg:justify-center">
-              <ScreenPanel
-                connected={connected}
-                screenReady={device.screenFound}
-                busy={busy}
-                status={timeStatus}
-                animationStatus={animationStatus}
-                animationProgress={animationProgress}
-                animationSending={animationSending}
-                onSend={handleSendTime}
-                onSendAnimation={handleSendAnimation}
-              />
-            </div>
+            <Suspense fallback={<PanelLoading label="screen" />}>
+              <div className="mt-5 grid content-start gap-5 lg:grid-cols-[minmax(0,440px)_340px] lg:justify-center">
+                <ScreenPanel
+                  connected={connected}
+                  screenReady={device.screenFound}
+                  busy={busy}
+                  status={timeStatus}
+                  animationStatus={animationStatus}
+                  animationProgress={animationProgress}
+                  animationSending={animationSending}
+                  onSend={handleSendTime}
+                  onSendAnimation={handleSendAnimation}
+                />
+              </div>
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="light">
-            <div className="mt-5 grid content-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
-              <LightingPanel
-                connected={connected}
-                busy={busy}
-                status={lightingStatus}
-                onApply={handleApplyLight}
-              />
-            </div>
+            <Suspense fallback={<PanelLoading label="lighting" />}>
+              <div className="mt-5 grid content-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+                <LightingPanel
+                  connected={connected}
+                  busy={busy}
+                  status={lightingStatus}
+                  onApply={handleApplyLight}
+                />
+              </div>
+            </Suspense>
           </TabsContent>
         </Tabs>
       </main>
@@ -566,13 +596,17 @@ export function App() {
         onClear={clearLog}
       />
 
-      <AdvancedDrawer
-        open={advancedOpen}
-        device={device.device}
-        log={log}
-        onClose={handleCloseAdvanced}
-        onBusyChange={handleAdvancedBusy}
-      />
+      {advancedOpen ? (
+        <Suspense fallback={null}>
+          <AdvancedDrawer
+            open
+            device={device.device}
+            log={log}
+            onClose={handleCloseAdvanced}
+            onBusyChange={handleAdvancedBusy}
+          />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

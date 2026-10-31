@@ -99,7 +99,7 @@ describe('App advanced drawer', () => {
     expect(screen.getByRole('button', { name: 'Advanced' })).toBeEnabled();
 
     await user.click(screen.getByRole('button', { name: 'Advanced' }));
-    const dialog = screen.getByRole('dialog', { name: 'Advanced' });
+    const dialog = await screen.findByRole('dialog', { name: 'Advanced' });
     expect(within(dialog).getByRole('tab', { name: 'Diagnostics' })).toBeInTheDocument();
 
     await user.keyboard('{Escape}');
