@@ -106,7 +106,7 @@ npm run preview
 
 The top layer is the table the keyboard types without Fn. Click a key, search for the new function
 under **Sends**, then upload. Every upload sends the full 576-byte table because the firmware has
-no single-key command.
+no single-key command. Click the selected key again to clear the inspector.
 
 The Fn layer tab edits what each key does while Fn is held. Only the keys you change are written;
 every other slot stays zero, which means the firmware handles that combination. Six keys marked

@@ -59,6 +59,22 @@ describe('App', () => {
     expect(screen.getByRole('log')).toHaveTextContent('No activity yet.');
   });
 
+  it('clears the selected key on a second click', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const board = screen.getByRole('group', { name: /keyboard board/i });
+    const caps = within(board).getByRole('button', { name: 'CapsLock' });
+
+    await user.click(caps);
+    expect(caps).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('CapsLock')).toBeInTheDocument();
+
+    await user.click(caps);
+    expect(caps).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByText('CapsLock')).not.toBeInTheDocument();
+    expect(screen.getByText('No key selected')).toBeInTheDocument();
+  });
+
   it('remembers a pending top-layer edit across a reload', async () => {
     const user = userEvent.setup();
     const first = render(<App />);

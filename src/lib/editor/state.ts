@@ -137,7 +137,9 @@ export type EditorAction =
 export function editorReducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
     case 'select':
-      return { ...state, selected: action.idx };
+      // A second click on the selected key clears it, which is the only way back
+      // to the empty inspector without picking another key.
+      return { ...state, selected: action.idx === state.selected ? null : action.idx };
 
     case 'layer':
       if (state.layer === action.layer) return state;

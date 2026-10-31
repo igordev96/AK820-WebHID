@@ -135,7 +135,7 @@ too: `0xE2` Left Alt to `0xE2` Mute changes only `media`.
 Reducer actions:
 
 ```text
-select              select a key index on the active layer
+select              select a key, or clear it when it is already selected
 layer               switch layer, clear the selection
 usage               set usage and media on the selected row, after validation
 reset-selected      return the selected row to its factory value

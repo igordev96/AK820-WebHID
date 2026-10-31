@@ -92,6 +92,29 @@ describe('editor selectors and layers', () => {
     expect(state.selected).toBeNull();
     expect(getSelectedRow(state)).toBeNull();
   });
+
+  it('clears the selection when the selected key is clicked again', () => {
+    let state = select(createInitialState(), 55);
+    state = select(state, 55);
+
+    expect(state.selected).toBeNull();
+    expect(getSelectedRow(state)).toBeNull();
+  });
+
+  it('moves the selection to another key', () => {
+    let state = select(createInitialState(), 55);
+    state = select(state, 56);
+
+    expect(getSelectedRow(state)?.idx).toBe(56);
+  });
+
+  it('clears the selection with a second click on the Fn layer too', () => {
+    let state = setLayer(createInitialState(), 'fn');
+    state = select(state, 56);
+    state = select(state, 56);
+
+    expect(getSelectedRow(state)).toBeNull();
+  });
 });
 
 describe('usage changes and pending state', () => {
