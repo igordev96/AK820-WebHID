@@ -1,7 +1,16 @@
 import { X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { realClock, type Clock } from '@/lib/clock';
 import {
   HidClient,
@@ -61,7 +70,6 @@ export function AdvancedDrawer({
   const [tab, setTab] = useState<Tab>('diagnostics');
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
-  const closeRef = useRef<HTMLButtonElement>(null);
   const client = useMemo(() => (device ? new HidClient(device) : null), [device]);
 
   const [diagnostics, setDiagnostics] = useState<DiagnosticResult | null>(null);
@@ -69,16 +77,6 @@ export function AdvancedDrawer({
   const [mailbox, setMailbox] = useState<MailboxProbeResult | null>(null);
   const [rawInput, setRawInput] = useState('04 18');
   const [rawLines, setRawLines] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (!open) return;
-    closeRef.current?.focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !busyRef.current) onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, open]);
 
   if (!open) return null;
 
@@ -125,77 +123,61 @@ export function AdvancedDrawer({
   };
 
   return (
-    <div className="fixed inset-0 z-50">
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 bg-ink/80 backdrop-blur-sm"
-        onClick={() => {
-          if (!busyRef.current) onClose();
+    <Sheet
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+    >
+      <SheetContent
+        onEscapeKeyDown={(event) => {
+          if (busyRef.current) event.preventDefault();
         }}
-      />
-
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="advanced-title"
-        className="absolute inset-y-0 right-0 flex w-full max-w-2xl flex-col border-l border-line bg-ink shadow-[-24px_0_60px_rgba(0,0,0,0.45)]"
+        onInteractOutside={(event) => {
+          if (busyRef.current) event.preventDefault();
+        }}
       >
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-line px-4">
+        <SheetHeader>
           <div>
-            <h2 id="advanced-title" className="text-sm font-semibold">
-              Advanced
-            </h2>
-            <p className="text-[11px] text-muted">
-              {device?.productName ?? 'No keyboard connected'}
-            </p>
+            <SheetTitle>Advanced</SheetTitle>
+            <SheetDescription>{device?.productName ?? 'No keyboard connected'}</SheetDescription>
           </div>
-          <Button
-            ref={closeRef}
-            variant="ghost"
-            size="icon"
-            aria-label="Close advanced"
-            disabled={busy}
-            onClick={onClose}
-          >
-            <X aria-hidden="true" />
-          </Button>
-        </header>
+          <SheetClose asChild>
+            <Button variant="ghost" size="icon" aria-label="Close advanced" disabled={busy}>
+              <X aria-hidden="true" />
+            </Button>
+          </SheetClose>
+        </SheetHeader>
 
-        <div
-          className="flex shrink-0 gap-1 overflow-x-auto border-b border-line px-3 py-2"
-          role="tablist"
-          aria-label="Advanced tools"
+        <Tabs
+          value={tab}
+          onValueChange={(next) => setTab(next as Tab)}
+          className="flex min-h-0 flex-1 flex-col"
         >
-          {TABS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === item.id}
-              disabled={busy}
-              className={cn(
-                'h-7 whitespace-nowrap rounded-[6px] px-3 text-xs font-medium transition-colors disabled:opacity-50',
-                tab === item.id
-                  ? 'bg-keycap text-brass'
-                  : 'text-muted hover:bg-surface-2 hover:text-ivory',
-              )}
-              onClick={() => setTab(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+          <div className="shrink-0 border-b border-line px-3 py-2">
+            <TabsList aria-label="Advanced tools" className="max-w-full overflow-x-auto">
+              {TABS.map((item) => (
+                <TabsTrigger
+                  key={item.id}
+                  value={item.id}
+                  disabled={busy}
+                  className="whitespace-nowrap"
+                >
+                  {item.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          <p className="mb-4 rounded-control border border-line bg-surface px-3 py-2 text-[11px] leading-relaxed text-muted">
-            These tools send test commands to the keyboard. No keymap is written, and uploads stay
-            locked while a probe runs.
-          </p>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            <p className="mb-4 rounded-control border border-line bg-surface px-3 py-2 text-[11px] leading-relaxed text-muted">
+              These tools send test commands to the keyboard. No keymap is written, and uploads stay
+              locked while a probe runs.
+            </p>
 
-          {!client ? <p className="text-sm text-muted">Connect the keyboard first.</p> : null}
+            {!client ? <p className="text-sm text-muted">Connect the keyboard first.</p> : null}
 
-          {tab === 'diagnostics' ? (
-            <section className="space-y-4">
+            <TabsContent value="diagnostics" className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm text-muted">
                   Check the interface, the write path and the mailbox.
@@ -249,11 +231,9 @@ export function AdvancedDrawer({
               ) : (
                 <p className="text-sm text-muted">Not run yet.</p>
               )}
-            </section>
-          ) : null}
+            </TabsContent>
 
-          {tab === 'deep' ? (
-            <section className="space-y-4">
+            <TabsContent value="deep" className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm text-muted">
                   Test whether the mailbox is an echo, a generated reply or write-only.
@@ -286,11 +266,9 @@ export function AdvancedDrawer({
               ) : (
                 <p className="text-sm text-muted">Not run yet.</p>
               )}
-            </section>
-          ) : null}
+            </TabsContent>
 
-          {tab === 'mailbox' ? (
-            <section className="space-y-4">
+            <TabsContent value="mailbox" className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm text-muted">
                   Probe opcode validation, the status byte and reply consumption.
@@ -316,44 +294,47 @@ export function AdvancedDrawer({
               ) : (
                 <p className="text-sm text-muted">Not run yet.</p>
               )}
-            </section>
-          ) : null}
+            </TabsContent>
 
-          {tab === 'raw' ? (
-            <section className="space-y-4">
+            <TabsContent value="raw" className="space-y-4">
               <p className="text-sm text-muted">
                 Send application-payload bytes. Up to 64 bytes is one frame; longer payloads are
                 split into bare 64-byte chunks.
               </p>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Input
-                  value={rawInput}
-                  spellCheck={false}
-                  aria-label="Raw command hex"
-                  className="font-mono text-xs sm:flex-1"
-                  onChange={(event) => setRawInput(event.target.value)}
-                />
-                <div className="flex gap-2">
-                  <Button size="sm" disabled={!client || busy} onClick={() => sendRaw(false)}>
-                    Send
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={!client || busy}
-                    onClick={() => sendRaw(true)}
-                  >
-                    Send and listen
-                  </Button>
+              <div className="space-y-1.5">
+                <label htmlFor="raw-command" className="block text-xs text-muted">
+                  Command bytes
+                </label>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    id="raw-command"
+                    value={rawInput}
+                    spellCheck={false}
+                    className="font-mono text-xs sm:flex-1"
+                    onChange={(event) => setRawInput(event.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" disabled={!client || busy} onClick={() => sendRaw(false)}>
+                      Send
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={!client || busy}
+                      onClick={() => sendRaw(true)}
+                    >
+                      Send and listen
+                    </Button>
+                  </div>
                 </div>
               </div>
               <pre className="min-h-32 overflow-auto rounded-control border border-line bg-surface p-3 font-mono text-xs text-muted">
                 {rawLines.length ? rawLines.join('\n') : 'No output yet.'}
               </pre>
-            </section>
-          ) : null}
-        </div>
-      </div>
-    </div>
+            </TabsContent>
+          </div>
+        </Tabs>
+      </SheetContent>
+    </Sheet>
   );
 }

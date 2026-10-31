@@ -12,7 +12,7 @@ src/main.tsx             React root, fonts and global styles
 src/App.tsx              page composition, upload and restore, drawer state
 src/styles/globals.css   colour, type and radius tokens, bench mat, base styles
 src/components/ui/       Button, Input, Popover, Calendar, Tabs, Checkbox, Slider, Select,
-                         Command, Combobox, ToggleGroup
+                         Command, Combobox, ToggleGroup, Sheet
 src/lib/keymap/          constants, factory keys, record encoding, names, parsing, table
 src/lib/hid/             protocol, client, collections, WebHID types, transfer, time, probes, raw
 src/lib/screen/          RGB565, frame layout, animation payload
@@ -186,9 +186,13 @@ has no keystroke to react to. After a confirmed commit, `src/lib/lighting/descri
 confirmation and the log line from the mode's own flags, so a mode without a speed control never
 reports one, and a mode that cycles through colours never promises the picker's hex.
 
-`AdvancedDrawer` holds four tabs: diagnostics, deep probe, mailbox and raw command. It takes a
-`clock` prop, which is the real clock in the app and a fake clock in tests. Probes report through
-the same log and set the app busy flag through `onBusyChange`.
+`AdvancedDrawer` is a `Sheet`: a Radix dialog that slides in from the right, traps focus, locks the
+page scroll and returns focus to the Advanced button on close. Escape and a click on the overlay
+both close it, and both are refused while a probe is running. Its four tabs (diagnostics, deep
+probe, mailbox, raw command) use the same `Tabs` primitive as the rest of the page, so each has a
+real panel and arrow keys move between them. It takes a `clock` prop, which is the real clock in
+the app and a fake clock in tests. Probes report through the same log and set the app busy flag
+through `onBusyChange`.
 
 ## 7. Tests
 

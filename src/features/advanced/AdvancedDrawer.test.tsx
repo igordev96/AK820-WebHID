@@ -106,7 +106,7 @@ describe('AdvancedDrawer', () => {
     renderDrawer(device);
 
     await user.click(screen.getByRole('tab', { name: 'Raw command' }));
-    const input = screen.getByLabelText('Raw command hex');
+    const input = screen.getByLabelText('Command bytes');
     await user.clear(input);
     await user.type(input, '04 19 00');
     await user.click(screen.getByRole('button', { name: 'Send' }));
@@ -126,7 +126,7 @@ describe('AdvancedDrawer', () => {
     const { log } = renderDrawer(device);
 
     await user.click(screen.getByRole('tab', { name: 'Raw command' }));
-    const input = screen.getByLabelText('Raw command hex');
+    const input = screen.getByLabelText('Command bytes');
     await user.clear(input);
     await user.type(input, '0x4');
     await user.click(screen.getByRole('button', { name: 'Send' }));
