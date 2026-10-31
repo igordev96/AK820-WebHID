@@ -78,8 +78,6 @@ export function AdvancedDrawer({
   const [rawInput, setRawInput] = useState('04 18');
   const [rawLines, setRawLines] = useState<string[]>([]);
 
-  if (!open) return null;
-
   const run = async <T,>(task: () => Promise<T>, apply: (value: T) => void) => {
     if (!client || busyRef.current) return;
     busyRef.current = true;

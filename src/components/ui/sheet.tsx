@@ -14,12 +14,12 @@ function SheetContent({
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
         data-slot="sheet-overlay"
-        className="fixed inset-0 z-50 bg-ink/80 backdrop-blur-sm"
+        className="sheet-overlay fixed inset-0 z-50 bg-ink/80 backdrop-blur-sm"
       />
       <DialogPrimitive.Content
         data-slot="sheet-content"
         className={cn(
-          'fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col border-l border-line bg-ink shadow-[-24px_0_60px_rgba(0,0,0,0.45)] outline-none',
+          'sheet-content fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col border-l border-line bg-ink shadow-[-24px_0_60px_rgba(0,0,0,0.45)] outline-none',
           className,
         )}
         {...props}
