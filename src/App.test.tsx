@@ -50,6 +50,16 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /upload 1 change/i })).toBeDisabled();
   });
 
+  it('links to the repository', () => {
+    render(<App />);
+
+    const link = screen.getByRole('link', { name: /open the project on github/i });
+
+    expect(link).toHaveAttribute('href', 'https://github.com/igordev96/AK820-WebHID');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(link).toHaveAttribute('target', '_blank');
+  });
+
   it('opens the log drawer', async () => {
     const user = userEvent.setup();
     render(<App />);

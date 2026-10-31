@@ -17,6 +17,8 @@ nothing to install and no admin rights to ask for.
 Open <https://ak820-webhid.netlify.app/> in Chrome, Edge or Opera, with the keyboard on USB and the
 vendor app closed. That is the whole setup.
 
+Source, issues and release notes: <https://github.com/igordev96/AK820-WebHID>.
+
 Developers: see [Quick start](#quick-start).
 
 AK820 Pro is a trademark of its owner. This project is not affiliated with AJAZZ. The tool writes

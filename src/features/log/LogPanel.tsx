@@ -1,8 +1,11 @@
 import { useEffect, useRef } from 'react';
+import { GitHubMark } from '@/components/github-mark';
 import { Button } from '@/components/ui/button';
 import type { LogLevel } from '@/lib/hid/transfer';
 import { cn } from '@/lib/utils';
 import { formatLog, type LogEntry } from './useLog';
+
+const REPOSITORY_URL = 'https://github.com/igordev96/AK820-WebHID';
 
 const levelClass: Record<LogLevel, string> = {
   info: 'text-ivory',
@@ -40,17 +43,30 @@ export function LogPanel({ entries, open, onToggle, onClear }: LogPanelProps) {
   return (
     <footer id="log-panel" className="border-t border-line">
       <div className="mx-auto w-full max-w-[1280px] px-4">
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-controls="log-entries"
-          aria-label={open ? 'Hide log' : 'Show log'}
-          className="flex h-11 w-full items-center justify-between text-xs text-muted transition-colors hover:text-ivory"
-          onClick={onToggle}
-        >
-          <span>Log</span>
-          <span>{open ? `${entries.length} entries` : 'Show'}</span>
-        </button>
+        <div className="flex h-11 items-center gap-4">
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls="log-entries"
+            aria-label={open ? 'Hide log' : 'Show log'}
+            className="flex h-11 min-w-0 flex-1 items-center justify-between text-xs text-muted transition-colors hover:text-ivory"
+            onClick={onToggle}
+          >
+            <span>Log</span>
+            <span>{open ? `${entries.length} entries` : 'Show'}</span>
+          </button>
+
+          <a
+            href={REPOSITORY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Open the project on GitHub"
+            className="flex h-11 shrink-0 items-center gap-1.5 text-xs text-muted transition-colors hover:text-ivory"
+          >
+            <GitHubMark className="size-3.5" />
+            <span>GitHub</span>
+          </a>
+        </div>
 
         {open ? (
           <div className="space-y-2 pb-3">
