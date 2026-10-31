@@ -15,7 +15,7 @@ src/components/ui/       Button, Popover, Calendar, Tabs, Checkbox, Slider, Sele
 src/lib/keymap/          constants, factory keys, record encoding, names, parsing, table
 src/lib/hid/             protocol, client, collections, WebHID types, transfer, time, probes, raw
 src/lib/screen/          RGB565, frame layout, animation payload
-src/lib/lighting/        the 64-byte solid-light record, preview motion and phase
+src/lib/lighting/        the 64-byte record, preview motion, accepted-light wording
 src/lib/editor/          row state, reducer, validation, persistence
 src/lib/clock.ts         Clock type and the real timer
 src/lib/format.ts        hex formatting
@@ -170,7 +170,9 @@ of the selected effect from the mode, speed, direction, brightness and Colourful
 under `prefers-reduced-motion`. The mode-to-motion table and each key's position in the wave live
 in `src/lib/lighting/preview.ts`, so the travel direction of a row or column and the rotation
 flip are tested without a keyboard. Effects that react to a key press are not modelled: the panel
-has no keystroke to react to.
+has no keystroke to react to. After a confirmed commit, `src/lib/lighting/describe.ts` writes the
+confirmation and the log line from the mode's own flags, so a mode without a speed control never
+reports one, and a mode that cycles through colours never promises the picker's hex.
 
 `AdvancedDrawer` holds four tabs: diagnostics, deep probe, mailbox and raw command. It takes a
 `clock` prop, which is the real clock in the app and a fake clock in tests. Probes report through
@@ -192,6 +194,7 @@ the same log and set the app busy flag through `onBusyChange`.
 | `src/lib/screen/animation.test.ts` | RGB565, header, delays, frame placement |
 | `src/lib/lighting/record.test.ts` | solid-light bytes, colour order, ranges |
 | `src/lib/lighting/preview.test.ts` | effect motion, wave direction, rotation flip |
+| `src/lib/lighting/describe.test.ts` | confirmed-light wording, per-mode fields |
 | `src/lib/hid/collections.test.ts` | flattening and config collection lookup |
 | `src/lib/hid/diagnostics.test.ts` | pass, refused write, silent read, missing collection |
 | `src/lib/hid/deepProbe.test.ts` | echo, silent device |

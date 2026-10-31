@@ -31,7 +31,7 @@ import {
 import { hex } from '@/lib/format';
 import { HidClient, STATUS, TransferService, formatClock, isTransportFailed } from '@/lib/hid';
 import { FN_LOCKED, buildTable } from '@/lib/keymap';
-import { LIGHT_MODES, LIGHT_MODE_OFF, buildLightRecord } from '@/lib/lighting';
+import { buildLightRecord, describeLight } from '@/lib/lighting';
 import { buildAnimationPayload } from '@/lib/screen';
 
 // The three view panels and the drawer load on demand. A visitor who only remaps
@@ -408,20 +408,9 @@ export function App() {
         const status = commit?.reply.status ?? null;
 
         if (status === STATUS.ok) {
-          const name = LIGHT_MODES.find((item) => item.id === mode)?.name ?? 'Light';
-          setLightingStatus({
-            kind: 'ok',
-            message:
-              mode === LIGHT_MODE_OFF
-                ? 'Sent. The light is off.'
-                : `Sent. ${name} at ${color.toUpperCase()}, brightness ${brightness}.`,
-          });
-          log(
-            mode === LIGHT_MODE_OFF
-              ? 'Light off.'
-              : `Light sent: ${name}, ${color.toUpperCase()}, brightness ${brightness}, speed ${speed}, colourful ${colorful ? 'on' : 'off'}.`,
-            'ok',
-          );
+          const { message, log: line } = describeLight(values);
+          setLightingStatus({ kind: 'ok', message });
+          log(line, 'ok');
           return;
         }
 
