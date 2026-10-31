@@ -2,11 +2,15 @@ import { TabRow } from '@/components/tab-row';
 import type { Layer } from '@/lib/editor';
 
 const layers = [
-  { id: 'top', label: 'Top layer', note: 'The full table the keyboard types without Fn.' },
+  {
+    id: 'top',
+    label: 'Top layer',
+    note: 'The full table the keyboard types without Fn. An upload sends all 81 keys.',
+  },
   {
     id: 'fn',
     label: 'Fn layer',
-    note: 'Only the keys you change are sent. Every other Fn combination stays with the firmware. Overrides are remembered in this browser.',
+    note: 'Only the keys you change are sent. Every other Fn combination stays with the firmware.',
   },
 ] as const;
 

@@ -8,9 +8,9 @@
 ![AK820 WebHID cover: a rendered keyboard beside the title and a Zero drivers badge](docs/assets/ak820-webhid-cover.jpg)
 
 An unofficial browser configurator for the AJAZZ AK820 Pro, also sold under the Epomaker name.
-Remap keys, set Fn overrides, set the screen clock and play GIFs on the 128 × 128 screen. It talks
-to the keyboard's configuration interface over WebHID, so there is nothing to install and no admin
-rights to ask for.
+Remap keys, set Fn overrides, set the screen clock and play GIFs on the 128 × 128 screen, and set
+the keyboard light. It talks to the keyboard's configuration interface over WebHID, so there is
+nothing to install and no admin rights to ask for.
 
 ## Use it online
 
@@ -33,7 +33,8 @@ this computer's time and a time picked by hand. Test 11 added the screen data ch
 block count was fixed. Test 14 showed that interrupting an upload wedges the keyboard until it is
 unplugged, so the animation card has no cancel. Test 15 added the solid-colour light and brightness,
 confirmed on the board after a commit-timing fix. Test 16 added the 20 effects with colour, speed and
-direction; every mode worked, and a left/right direction bug was found and fixed.
+direction; every mode worked, and a left/right direction bug was found and fixed. The work after
+Test 16 changed only the interface, so it has no hardware test of its own.
 [docs/02-hardware-tests.md](docs/02-hardware-tests.md) records the evidence.
 
 ## What it does
@@ -63,8 +64,8 @@ protocol, but they have not been tried.
 ## What it cannot do
 
 The firmware has no read-back command, so the app cannot show the layout stored on the keyboard.
-It assumes the top layer is factory and treats an all-zero Fn table as the default. Fn overrides
-are saved in this browser.
+It assumes the top layer is factory and treats an all-zero Fn table as the default. Your own edits
+are saved in this browser; they are not read from the keyboard.
 
 The screen is write-only too: the page cannot read the clock or anything else the screen holds.
 The clock has no timezone, so it stays on the wall-clock time you sent.
@@ -103,7 +104,7 @@ npm run preview
 
 ## Using the editor
 
-The top layer is the table the keyboard types without Fn. Click a key, choose the new function
+The top layer is the table the keyboard types without Fn. Click a key, search for the new function
 under **Sends**, then upload. Every upload sends the full 576-byte table because the firmware has
 no single-key command.
 
@@ -155,7 +156,7 @@ effect that reacts to typing cannot be shown: the panel never sees which key you
 
 Per-key colours are not built yet.
 
-**Advanced** opens the diagnostics, the deep probe, the mailbox probe and a raw command card.
+**Advanced** opens the diagnostics, the deep probe, the mailbox probe and a raw command tab.
 These send test commands and never write a keymap. Uploads are locked while one of them runs.
 
 ## The missing read-back
@@ -163,8 +164,8 @@ These send test commands and never write a keymap. Uploads are locked while one 
 If you remapped keys in the vendor app, this app cannot see that layout. Uploading the factory map
 will overwrite it. Restore the vendor app's defaults first if you need to keep it.
 
-Fn overrides are stored in `localStorage` under `ak820.fn.overrides` in this browser profile.
-Clearing site data forgets them. They do not travel to another browser or machine.
+Your own edits live in this browser profile, in the storage described below. They stay until you
+clear site data, and they do not travel to another browser or machine.
 
 ## What this browser remembers
 
@@ -214,7 +215,8 @@ place.
 ## Privacy
 
 The page makes no analytics, telemetry or external asset requests. Fonts are self-hosted. The only
-stored data is the Fn overrides in `localStorage` under `ak820.fn.overrides`.
+stored data is what this browser remembers: the view and the screen, lighting and clock settings in
+`ak820.settings`, and the two key layers in `ak820.layers`.
 
 ## Development
 

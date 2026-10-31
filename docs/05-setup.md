@@ -100,8 +100,8 @@ The Netlify deploy itself is not part of `npm run verify`. Check the production 
 | Chunk refused four times | the firmware is not in the data phase, usually after an aborted transfer; replug USB and retry |
 | Commit `0xFF` | the staged table is invalid (trailer, slot above 142, bad record); nothing was applied |
 | Upload accepted but nothing changed | wrong layer, a `fnlayer_disable` key, or a record type the firmware ignores |
-| Fn overrides disappear after reload | expected: there is no read-back; the page restores them from `localStorage` |
-| Fn overrides do not follow to another browser | expected: they live in this browser profile only |
+| A change is still marked pending after a reload | expected: the page remembers your draft, and the keyboard has not been told yet. Upload it, or reset the key |
+| A change is missing in another browser or profile | expected: edits live in this browser profile only |
 | `localStorage` errors | the app was opened from `file://` or storage is blocked; use localhost or HTTPS |
 | Everything looks fine but keys do not type | restore the factory map, or use the vendor app's reset |
 | The deployed site does not see the keyboard | serve it over HTTPS and allow the device on that origin; permission does not carry over from localhost |

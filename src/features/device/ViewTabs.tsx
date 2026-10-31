@@ -6,7 +6,11 @@ export type { View };
 const views = [
   { id: 'keys', label: 'Keys', note: 'Remap keys on the top and Fn layers.' },
   { id: 'screen', label: 'Screen', note: 'Set the clock and play GIFs on the keyboard screen.' },
-  { id: 'light', label: 'Lighting', note: 'Set the colour and brightness of the keys.' },
+  {
+    id: 'light',
+    label: 'Lighting',
+    note: 'Pick one of the 20 effects and set the controls it offers.',
+  },
 ] as const;
 
 type ViewTabsProps = {

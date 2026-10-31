@@ -1,7 +1,7 @@
 const RULES = [
   {
     title: 'One table per upload',
-    body: 'The keyboard takes the whole 576-byte table in a single transfer. Edits stay on this page until the commit is accepted.',
+    body: 'The keyboard takes the whole 576-byte table in a single transfer. Edits are remembered in this browser, and the keyboard keeps its table until a commit is accepted.',
   },
   {
     title: 'Fn layer stores overrides only',

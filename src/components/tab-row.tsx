@@ -12,15 +12,15 @@ type TabRowProps = {
 /** A tab list with its explanatory note, shared by the view and layer switches. */
 export function TabRow({ label, items, note, disabled }: TabRowProps) {
   return (
-    <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
-      <TabsList aria-label={label}>
+    <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+      <TabsList aria-label={label} className="shrink-0">
         {items.map((item) => (
           <TabsTrigger key={item.id} value={item.id} disabled={disabled}>
             {item.label}
           </TabsTrigger>
         ))}
       </TabsList>
-      <p className="max-w-md text-xs text-muted sm:text-right">{note}</p>
+      <p className="min-w-0 max-w-md text-xs text-muted sm:text-right">{note}</p>
     </div>
   );
 }

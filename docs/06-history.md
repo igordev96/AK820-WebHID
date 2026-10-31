@@ -66,6 +66,13 @@ WebHID won because it is the only option with zero install and a stable API for 
     `TransferService` kept the single-transfer lock; the editor gained a scale-to-fit board, a
     log drawer and an Advanced drawer for diagnostics and raw commands. Hardware Test 9 passed on
     29 Oct 2026: top layer, Fn media, both restore actions and the upload lock.
+14. **Interface and persistence pass** — the controls moved to Radix primitives in the shadcn
+    style, and the screen, lighting and advanced panels now load on demand, which took the first
+    visit from 166 kB to 108 kB gzipped. Both key layers are remembered in `ak820.layers` as a
+    draft plus the last confirmed upload, so a reload can show a pending change without implying
+    the keyboard has it. The light preview follows the selected effect and stops under
+    `prefers-reduced-motion`; it cannot show the effects that answer a key press. No bytes changed,
+    so there is no new hardware test.
 
 ## 4. Lessons that cost time
 

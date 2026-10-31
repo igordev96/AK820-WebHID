@@ -165,26 +165,23 @@ Scopes: `app`, `editor`, `keymap`, `media`, `transport`, `styles`, `docs`, `tool
 
 Never claim "works" from a `0x01` commit. Keep `docs/02-hardware-tests.md` factual and dated.
 
-## Refactor state
+## Release state
 
-Phases 1 to 8 are complete. The repository is published at
-https://github.com/igordev96/AK820-WebHID and the site runs at
-https://ak820-webhid.netlify.app/. `main` holds the v2.0.0 release, and `refactor/react` points at
-the same commit.
+The v2 rewrite is finished. `main` is the release line, each version has an annotated tag, and the
+site runs at https://ak820-webhid.netlify.app/. The keymap, HID transport and transfer service,
+editor, screen, lighting and the advanced drawer are in place, and `npm run verify` gates all of
+them.
 
-The toolchain, keymap, HID transport and transfer service, editor state/persistence, the React
-editor, the advanced drawer, the visual pass and the v2 documentation are in place. Connection,
-editing, upload, restore, the log drawer, diagnostics, the deep probe, the mailbox probe, the raw
-command card and the responsive board are wired, and Test 9 passed on the board.
-
-Hardware Test 9 passed on 29 Oct 2026. `v2.0.0` is tagged.
+Hardware evidence lives in `docs/02-hardware-tests.md`. Tests 9 to 16 cover the React rewrite, the
+screen clock, the animation channel and the light with its 20 effects. A release that changes a
+byte needs its own dated test; one that changes only the interface does not.
 
 The v1 `serve.js`, `start.cmd` and `tools/` JavaScript harnesses are gone; their last copy is in
 the `v1.0.1` tag. The npm scripts are the check path, and CI runs them. The root `index.html` is
 the Vite entry, not the old product.
 
-Keep the protocol behaviour identical through the refactor. Do not mix feature work into this
-branch.
+Keep the protocol behaviour identical between releases. Do not fold a byte change into an
+interface change.
 
 ## Reporting
 

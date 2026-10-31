@@ -168,7 +168,7 @@ export function KeyInspector({
               locked ? 'bg-muted/60' : pending ? 'bg-brass' : 'bg-sage',
             )}
           />
-          {locked ? 'Firmware-owned' : pending ? 'Change pending' : 'Matches the keyboard'}
+          {locked ? 'Firmware-owned' : pending ? 'Change pending' : 'Matches the last upload'}
         </span>
         <Button variant="ghost" size="sm" disabled={controlsDisabled} onClick={onReset}>
           {layer === 'fn' ? 'Back to firmware default' : 'Reset this key'}

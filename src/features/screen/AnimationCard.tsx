@@ -4,6 +4,7 @@ import { StatusNote } from '@/components/status-note';
 import {
   SCREEN_BLOCKS_PER_FRAME,
   SCREEN_HEIGHT,
+  SCREEN_MAX_FRAMES,
   SCREEN_WIDTH,
   decodeAnimation,
   encodeRgb565,
@@ -171,7 +172,7 @@ export function AnimationCard({
         <p className="mt-2 text-[11px] leading-relaxed text-muted">
           <span className="text-ivory/90">{picked.frameCount} frames</span>,{' '}
           {(totalMs / 1000).toFixed(1)} s, about {estimateSeconds} s to send.
-          {picked.truncated ? ' Only the first 140 frames are used.' : ''}
+          {picked.truncated ? ` Only the first ${SCREEN_MAX_FRAMES} frames are used.` : ''}
         </p>
       ) : null}
 
