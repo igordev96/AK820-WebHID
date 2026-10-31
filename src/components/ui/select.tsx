@@ -63,7 +63,7 @@ function SelectItem({
       data-slot="select-item"
       className={cn(
         'relative flex h-8 cursor-pointer select-none items-center rounded-[6px] pl-2 pr-8 text-sm text-ivory outline-none',
-        'data-[highlighted]:bg-surface-2 data-[disabled]:pointer-events-none data-[disabled]:opacity-40',
+        'data-highlighted:bg-surface-2 data-disabled:pointer-events-none data-disabled:opacity-40',
         className,
       )}
       {...props}

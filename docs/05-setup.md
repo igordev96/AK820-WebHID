@@ -50,6 +50,13 @@ That runs all five steps in order:
 `npm run format` applies the formatter. Tests do not need a keyboard: `src/test/hidFakes.ts`
 provides a fake clock, a fake transport, and the app tests install a fake `navigator.hid`.
 
+The linter reads the Tailwind stylesheet. `oxlint-tailwindcss` compiles
+`src/styles/globals.css`, so a misspelt class, a class that contradicts another in the same list,
+or a utility retired in Tailwind v4 fails `npm run lint`. The first run of a session takes a few
+seconds to build the design system; after that it is cached and the whole lint step stays around a
+second. If the stylesheet moves, update `settings.tailwindcss.entryPoint` in `.oxlintrc.json`; the
+plugin reports exactly which path it tried if the setting is wrong.
+
 GitHub Actions runs the same `npm run verify` on every push to `main` and every pull request. The
 workflow is `.github/workflows/ci.yml`. Netlify builds `main` after the push, and its deploy status
 badge is in the README.

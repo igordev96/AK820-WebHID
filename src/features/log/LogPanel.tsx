@@ -71,7 +71,7 @@ export function LogPanel({ entries, open, onToggle, onClear }: LogPanelProps) {
             >
               {entries.length ? (
                 entries.map((entry) => (
-                  <div key={entry.id} className="break-words">
+                  <div key={entry.id} className="wrap-break-word">
                     <span className="text-muted/70">{entry.time}</span>{' '}
                     <span className={cn(levelClass[entry.level])}>{entry.message}</span>
                   </div>

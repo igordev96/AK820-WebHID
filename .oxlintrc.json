@@ -1,13 +1,27 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["react", "typescript", "import", "unicorn"],
+  "jsPlugins": ["oxlint-tailwindcss"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn"
   },
   "rules": {
     "react/react-in-jsx-scope": "off",
-    "import/no-unassigned-import": "off"
+    "import/no-unassigned-import": "off",
+    "tailwindcss/no-unknown-classes": "error",
+    "tailwindcss/no-conflicting-classes": "error",
+    "tailwindcss/no-duplicate-classes": "error",
+    "tailwindcss/no-dynamic-classes": "error",
+    "tailwindcss/enforce-canonical": "error",
+    "tailwindcss/no-deprecated-classes": "error",
+    "tailwindcss/no-unnecessary-arbitrary-value": "error",
+    "tailwindcss/enforce-shorthand": "error"
+  },
+  "settings": {
+    "tailwindcss": {
+      "entryPoint": "src/styles/globals.css"
+    }
   },
   "ignorePatterns": ["dist", "coverage", "node_modules"]
 }
