@@ -2,6 +2,7 @@ import { Suspense, lazy, useCallback, useMemo, useReducer, useRef, useState } fr
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { AppHeader } from '@/features/device/AppHeader';
 import { ViewTabs, type View } from '@/features/device/ViewTabs';
+import { updateSettings, useSettings } from '@/features/settings/useSettings';
 import { useDevice } from '@/features/device/useDevice';
 import { KeyInspector } from '@/features/editor/KeyInspector';
 import { KeymapBoard } from '@/features/editor/KeymapBoard';
@@ -87,7 +88,7 @@ export function App() {
   const [confirming, setConfirming] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
-  const [view, setView] = useState<View>('keys');
+  const view = useSettings((settings) => settings.view);
   const [timeStatus, setTimeStatus] = useState<TimeStatus>({ kind: 'idle' });
   const [lightingStatus, setLightingStatus] = useState<LightingStatus>({ kind: 'idle' });
   const [animationStatus, setAnimationStatus] = useState<ScreenStatus>({ kind: 'idle' });
@@ -490,7 +491,7 @@ export function App() {
       ) : null}
 
       <main className="mx-auto w-full max-w-[1320px] flex-1 px-4 py-6">
-        <Tabs value={view} onValueChange={(next) => setView(next as View)}>
+        <Tabs value={view} onValueChange={(next) => updateSettings({ view: next as View })}>
           <ViewTabs view={view} disabled={busy} />
 
           <TabsContent value="keys">

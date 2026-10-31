@@ -1,9 +1,10 @@
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { buildTimePacket, formatClock } from '@/lib/hid';
+import type { ClockMode } from '@/lib/settings';
 import { DateTimePicker } from './DateTimePicker';
 
-export type ClockMode = 'now' | 'custom';
+export type { ClockMode };
 
 export type TimeStatus =
   | { readonly kind: 'idle' }

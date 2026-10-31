@@ -116,4 +116,17 @@ describe('LightingPanel', () => {
 
     expect(screen.getByText(/Sent\. Breath/)).toBeInTheDocument();
   });
+
+  it('keeps the chosen effect when the panel goes away and comes back', async () => {
+    const user = userEvent.setup();
+    const first = renderPanel();
+
+    await chooseEffect(user, 'Rolling');
+    first.unmount();
+
+    renderPanel();
+
+    expect(screen.getByRole('combobox', { name: 'Effect' })).toHaveTextContent('Rolling');
+    expect(screen.getByRole('slider', { name: 'Speed' })).toBeInTheDocument();
+  });
 });

@@ -1,6 +1,7 @@
 import { TabsList, TabsTrigger } from '@/components/ui/tabs';
+import type { View } from '@/lib/settings';
 
-export type View = 'keys' | 'screen' | 'light';
+export type { View };
 
 const views = [
   { id: 'keys', label: 'Keys', note: 'Remap keys on the top and Fn layers.' },

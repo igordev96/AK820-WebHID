@@ -166,6 +166,17 @@ will overwrite it. Restore the vendor app's defaults first if you need to keep i
 Fn overrides are stored in `localStorage` under `ak820.fn.overrides` in this browser profile.
 Clearing site data forgets them. They do not travel to another browser or machine.
 
+## What this browser remembers
+
+The view you were on, the clock source and the light settings are stored under `ak820.settings`,
+so a reload returns you to the same place with the same light. They are read back field by field:
+a value that stops making sense, such as an effect that no longer exists, falls back to its
+default instead of breaking the page.
+
+Two things are deliberately not kept. Pending top-layer edits are dropped, because a saved table
+would look like it was already on the keyboard. The log is dropped too: lines from an earlier
+session would describe a device state this page never saw.
+
 ## Recovery
 
 Undo a single change with **Reset this key** on the top layer or **Back to firmware default** on

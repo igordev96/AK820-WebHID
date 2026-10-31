@@ -17,6 +17,7 @@ src/lib/hid/             protocol, client, collections, WebHID types, transfer, 
 src/lib/screen/          RGB565, frame layout, animation payload
 src/lib/lighting/        the 64-byte record, preview motion, accepted-light wording
 src/lib/editor/          row state, reducer, validation, persistence
+src/lib/settings/        remembered view, clock mode and light settings
 src/lib/clock.ts         Clock type and the real timer
 src/lib/format.ts        hex formatting
 src/features/device/     useDevice, AppHeader, ViewTabs
@@ -24,6 +25,7 @@ src/features/editor/     LayerTabs, KeymapBoard, KeyInspector, PendingBar, Write
 src/features/screen/     ScreenPanel, ScreenPreview, ClockCard, DateTimePicker, AnimationCard
 src/features/lighting/   LightingPanel, LightPreview
 src/features/log/        useLog, LogPanel
+src/features/settings/   the settings store and its React hook
 src/features/advanced/   AdvancedDrawer
 src/test/                Vitest setup, fake HID device and fake clock
 ```
@@ -33,6 +35,13 @@ src/test/                Vitest setup, fake HID device and fake clock
 `src/lib/keymap` and `src/lib/hid` are framework-free. They export functions and types; they do
 not import React or touch the DOM except through the `WebHidDevice` shape the caller supplies.
 `src/lib/editor` is also React-free: plain state, a reducer and storage.
+
+`src/lib/settings` validates and serialises what the page remembers; `src/features/settings`
+keeps that in a module store and exposes it through `useSyncExternalStore`. Panels read and
+write their slice, so unmounting one no longer drops its values. The store holds the values in
+memory and writes to `localStorage` after a 200 ms pause, flushed on `pagehide`. Pending
+top-layer edits and the log stay out on purpose: a saved table would look applied, and a saved
+log would describe traffic from another session.
 
 React components render and dispatch. They never call `navigator.hid`. `useDevice` owns the
 chooser, open and close, and the disconnect listener. Uploads go through `TransferService`. The
@@ -195,6 +204,7 @@ the same log and set the app busy flag through `onBusyChange`.
 | `src/lib/lighting/record.test.ts` | solid-light bytes, colour order, ranges |
 | `src/lib/lighting/preview.test.ts` | effect motion, wave direction, rotation flip |
 | `src/lib/lighting/describe.test.ts` | confirmed-light wording, per-mode fields |
+| `src/lib/settings/settings.test.ts` | stored-field validation, defaults, version |
 | `src/lib/hid/collections.test.ts` | flattening and config collection lookup |
 | `src/lib/hid/diagnostics.test.ts` | pass, refused write, silent read, missing collection |
 | `src/lib/hid/deepProbe.test.ts` | echo, silent device |
@@ -209,6 +219,7 @@ the same log and set the app busy flag through `onBusyChange`.
 | `src/features/screen/DateTimePicker.test.tsx` | day and time selection, Now, close |
 | `src/features/screen/ScreenPanel.test.tsx` | preview, custom input, send payload |
 | `src/features/lighting/LightingPanel.test.tsx` | colour, brightness, preview labels, status |
+| `src/features/settings/store.test.ts` | change notification, delayed write, flush, reset |
 | `src/App.test.tsx` | offline editing, layers, log |
 | `src/App.upload.test.tsx` | fake HID end to end: connect, edit, upload, commit |
 | `src/App.screen.test.tsx` | view switch and a fake-HID clock send |

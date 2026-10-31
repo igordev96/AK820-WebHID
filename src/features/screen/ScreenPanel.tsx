@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { updateSettings, useSettings } from '@/features/settings/useSettings';
 import { AnimationCard, type ScreenStatus } from './AnimationCard';
 import { ClockCard, type ClockMode, type TimeStatus } from './ClockCard';
 import { ScreenPreview } from './ScreenPreview';
@@ -26,7 +27,7 @@ export function ScreenPanel({
   onSend,
   onSendAnimation,
 }: ScreenPanelProps) {
-  const [mode, setMode] = useState<ClockMode>('now');
+  const mode = useSettings((settings) => settings.clock.mode);
   const [now, setNow] = useState(() => new Date());
   const [customAt, setCustomAt] = useState<Date | null>(null);
 
@@ -39,7 +40,7 @@ export function ScreenPanel({
   const preview = mode === 'now' ? now : (customAt ?? now);
 
   const changeMode = (next: ClockMode) => {
-    setMode(next);
+    updateSettings({ clock: { mode: next } });
     if (next === 'custom' && customAt === null) setCustomAt(new Date());
   };
 

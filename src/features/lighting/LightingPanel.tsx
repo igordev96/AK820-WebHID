@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -11,6 +10,7 @@ import {
 } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { updateSettings, useSettings } from '@/features/settings/useSettings';
 import {
   LIGHT_MAX_BRIGHTNESS,
   LIGHT_MAX_SPEED,
@@ -18,6 +18,7 @@ import {
   LIGHT_MIN_SPEED,
   LIGHT_MODES,
   LIGHT_MODE_OFF,
+  type LightSettings,
 } from '@/lib/lighting';
 import { LightPreview } from './LightPreview';
 
@@ -26,14 +27,7 @@ export type LightingStatus =
   | { readonly kind: 'ok'; readonly message: string }
   | { readonly kind: 'err'; readonly message: string };
 
-export type LightingValues = {
-  readonly mode: number;
-  readonly color: string;
-  readonly brightness: number;
-  readonly speed: number;
-  readonly colorful: boolean;
-  readonly direction: number;
-};
+export type LightingValues = LightSettings;
 
 type LightingPanelProps = {
   connected: boolean;
@@ -48,25 +42,20 @@ const defaultFor = (mode: number) => ({
 });
 
 export function LightingPanel({ connected, busy, status, onApply }: LightingPanelProps) {
-  const [mode, setMode] = useState(1);
-  const [color, setColor] = useState('#ff8000');
-  const [brightness, setBrightness] = useState(5);
-  const [speed, setSpeed] = useState(3);
-  const [colorful, setColorful] = useState(false);
-  const [direction, setDirection] = useState(0);
+  const values = useSettings((settings) => settings.lighting);
+  const { mode, color, brightness, speed, colorful, direction } = values;
 
   const entry = LIGHT_MODES.find((item) => item.id === mode) ?? LIGHT_MODES[0]!;
   const off = mode === LIGHT_MODE_OFF;
   const controlsDisabled = busy || off;
 
-  const changeMode = (next: number) => {
-    setMode(next);
-    const defaults = defaultFor(next);
-    setColorful(defaults.colorful);
-    setDirection(defaults.direction);
+  const change = (patch: Partial<LightSettings>) => {
+    updateSettings({ lighting: { ...values, ...patch } });
   };
 
-  const values: LightingValues = { mode, color, brightness, speed, colorful, direction };
+  const changeMode = (next: number) => {
+    change({ mode: next, ...defaultFor(next) });
+  };
 
   return (
     <>
@@ -121,7 +110,7 @@ export function LightingPanel({ connected, busy, status, onApply }: LightingPane
                   value={color}
                   disabled={controlsDisabled || colorful}
                   className="size-10 cursor-pointer rounded-control border border-line bg-ink p-1 disabled:cursor-not-allowed disabled:opacity-40"
-                  onChange={(event) => setColor(event.currentTarget.value)}
+                  onChange={(event) => change({ color: event.currentTarget.value })}
                 />
                 <div>
                   <p className="font-mono text-xs text-ivory">{color.toUpperCase()}</p>
@@ -136,7 +125,7 @@ export function LightingPanel({ connected, busy, status, onApply }: LightingPane
                     checked={colorful}
                     disabled={controlsDisabled}
                     aria-labelledby="light-colorful-label"
-                    onCheckedChange={(checked) => setColorful(checked === true)}
+                    onCheckedChange={(checked) => change({ colorful: checked === true })}
                   />
                   <span id="light-colorful-label" className="text-xs text-muted">
                     Colourful
@@ -161,7 +150,7 @@ export function LightingPanel({ connected, busy, status, onApply }: LightingPane
               step={1}
               value={[brightness]}
               disabled={controlsDisabled}
-              onValueChange={([value]) => setBrightness(value ?? LIGHT_MIN_BRIGHTNESS)}
+              onValueChange={([value]) => change({ brightness: value ?? LIGHT_MIN_BRIGHTNESS })}
             />
             <div className="flex justify-between font-mono text-[10px] text-muted">
               <span>{LIGHT_MIN_BRIGHTNESS}</span>
@@ -185,7 +174,7 @@ export function LightingPanel({ connected, busy, status, onApply }: LightingPane
                 step={1}
                 value={[speed]}
                 disabled={controlsDisabled}
-                onValueChange={([value]) => setSpeed(value ?? LIGHT_MIN_SPEED)}
+                onValueChange={([value]) => change({ speed: value ?? LIGHT_MIN_SPEED })}
               />
             </div>
           ) : null}
@@ -199,7 +188,7 @@ export function LightingPanel({ connected, busy, status, onApply }: LightingPane
                 value={String(direction)}
                 disabled={controlsDisabled}
                 onValueChange={(value) => {
-                  if (value) setDirection(Number(value));
+                  if (value) change({ direction: Number(value) });
                 }}
                 className="inline-flex rounded-control border border-line bg-ink p-1"
               >
@@ -224,7 +213,7 @@ export function LightingPanel({ connected, busy, status, onApply }: LightingPane
 
           <div className="mt-4">
             <Button disabled={!connected || busy} onClick={() => onApply(values)}>
-              {busy ? 'Sending…' : 'Apply light'}
+              {busy ? 'Sendingâ€¦' : 'Apply light'}
             </Button>
           </div>
 
