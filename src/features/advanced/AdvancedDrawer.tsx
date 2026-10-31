@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { realClock, type Clock } from '@/lib/clock';
 import {
   HidClient,
@@ -325,11 +326,11 @@ export function AdvancedDrawer({
                 split into bare 64-byte chunks.
               </p>
               <div className="flex flex-col gap-2 sm:flex-row">
-                <input
+                <Input
                   value={rawInput}
                   spellCheck={false}
                   aria-label="Raw command hex"
-                  className="h-9 min-w-0 flex-1 rounded-control border border-line bg-surface px-3 font-mono text-xs text-ivory"
+                  className="font-mono text-xs sm:flex-1"
                   onChange={(event) => setRawInput(event.target.value)}
                 />
                 <div className="flex gap-2">

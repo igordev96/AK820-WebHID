@@ -55,7 +55,9 @@ describe('App upload flow', () => {
 
     const board = screen.getByRole('group', { name: /keyboard board/i });
     await user.click(within(board).getByRole('button', { name: 'CapsLock' }));
-    await user.selectOptions(screen.getByLabelText('Sends'), 'c:0xE2');
+    await user.click(screen.getByLabelText('Sends'));
+    await user.type(screen.getByLabelText('Search a key or usage'), 'mute');
+    await user.click(await screen.findByRole('option', { name: 'Media: Mute (c:0xE2)' }));
     await user.click(screen.getByRole('button', { name: /upload 1 change/i }));
 
     await screen.findByText('No pending changes', {}, { timeout: 8000 });

@@ -19,7 +19,7 @@ describe('App', () => {
     await user.click(within(board).getByRole('button', { name: 'CapsLock' }));
 
     expect(screen.getByText('CapsLock')).toBeInTheDocument();
-    expect(screen.getByLabelText('Sends')).toHaveValue('0x39');
+    expect(screen.getByLabelText('Sends')).toHaveTextContent('CapsLock (0x39)');
   });
 
   it('switches to the Fn layer and locks six keys', async () => {
@@ -43,7 +43,9 @@ describe('App', () => {
     const board = screen.getByRole('group', { name: /keyboard board/i });
 
     await user.click(within(board).getByRole('button', { name: 'CapsLock' }));
-    await user.selectOptions(screen.getByLabelText('Sends'), 'c:0xE2');
+    await user.click(screen.getByLabelText('Sends'));
+    await user.type(screen.getByLabelText('Search a key or usage'), 'mute');
+    await user.click(await screen.findByRole('option', { name: 'Media: Mute (c:0xE2)' }));
     expect(screen.getByText('Change pending')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /upload 1 change/i })).toBeDisabled();
   });

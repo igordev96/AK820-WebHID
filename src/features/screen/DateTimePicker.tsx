@@ -2,6 +2,7 @@ import { CalendarDays } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
+import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { formatClock, formatTimeInput } from '@/lib/hid';
 import { cn } from '@/lib/utils';
@@ -86,14 +87,14 @@ export function DateTimePicker({ id, labelledBy, value, disabled, onChange }: Da
           <label htmlFor={id ? `${id}-time` : undefined} className="block text-[11px] text-muted">
             Time
           </label>
-          <input
+          <Input
             id={id ? `${id}-time` : undefined}
             type="time"
             step="1"
             aria-label="Time"
             value={formatClock(value)}
             disabled={disabled}
-            className="h-8 w-full rounded-control border border-line bg-ink px-2 font-mono text-xs text-ivory transition-colors hover:border-muted/50 disabled:cursor-not-allowed disabled:opacity-40"
+            className="h-8 font-mono text-xs"
             onChange={(event) => setTime(event.currentTarget.value)}
           />
         </div>

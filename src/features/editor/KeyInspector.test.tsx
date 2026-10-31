@@ -4,6 +4,16 @@ import { describe, expect, it, vi } from 'vitest';
 import { createInitialState, editorReducer, getSelectedRow } from '@/lib/editor';
 import { KeyInspector } from './KeyInspector';
 
+const chooseUsage = async (
+  user: ReturnType<typeof userEvent.setup>,
+  search: string,
+  option: string,
+) => {
+  await user.click(screen.getByLabelText('Sends'));
+  await user.type(screen.getByLabelText('Search a key or usage'), search);
+  await user.click(await screen.findByRole('option', { name: option }));
+};
+
 const selectedTop = () => {
   const state = editorReducer(createInitialState(), { type: 'select', idx: 55 });
   return getSelectedRow(state)!;
@@ -31,7 +41,7 @@ describe('KeyInspector', () => {
     );
 
     expect(screen.getByText('CapsLock')).toBeInTheDocument();
-    expect(screen.getByLabelText('Sends')).toHaveValue('0x39');
+    expect(screen.getByLabelText('Sends')).toHaveTextContent('CapsLock (0x39)');
     expect(screen.getByLabelText('Raw usage')).toHaveValue('0x39');
   });
 
@@ -50,7 +60,7 @@ describe('KeyInspector', () => {
       />,
     );
 
-    await user.selectOptions(screen.getByLabelText('Sends'), 'c:0xE2');
+    await chooseUsage(user, 'mute', 'Media: Mute (c:0xE2)');
     expect(onUsage).toHaveBeenCalledWith(0xe2, true);
   });
 

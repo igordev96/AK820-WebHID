@@ -1,4 +1,7 @@
+import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
+import { Combobox, type ComboboxGroup } from '@/components/ui/combobox';
+import { Input } from '@/components/ui/input';
 import { usageToken } from '@/lib/editor';
 import type { EditorRow, Layer } from '@/lib/editor';
 import { MEDIA_NAMES, USAGE_GROUPS, USAGE_NAMES, parseUsageToken, usageLabel } from '@/lib/keymap';
@@ -44,6 +47,11 @@ function buildOptionGroups(): OptionGroup[] {
 
 const OPTION_GROUPS = buildOptionGroups();
 
+const FN_DEFAULT: ComboboxGroup = {
+  label: 'Fn layer',
+  options: [{ value: '0x00', label: 'Firmware default (no override)' }],
+};
+
 type KeyInspectorProps = {
   row: EditorRow | null;
   layer: Layer;
@@ -81,6 +89,10 @@ export function KeyInspector({
   onInvalid,
 }: KeyInspectorProps) {
   const token = row ? usageToken(row.usage, row.media) : '0x00';
+  const groups = useMemo(
+    () => (layer === 'fn' ? [FN_DEFAULT, ...OPTION_GROUPS] : OPTION_GROUPS),
+    [layer],
+  );
 
   if (!row) {
     return (
@@ -164,39 +176,27 @@ export function KeyInspector({
       </div>
 
       <div className="mt-4 space-y-1.5">
-        <label htmlFor="key-usage" className="block text-xs text-muted">
+        <span id="key-usage-label" className="block text-xs text-muted">
           Sends
-        </label>
-        <select
+        </span>
+        <Combobox
           id="key-usage"
+          label="Sends"
           value={token}
+          valueLabel={custom ? `${usageLabel(row.usage, row.media)} (${token})` : undefined}
+          groups={groups}
+          searchPlaceholder="Search a key or usage"
+          emptyText="No usage matches."
           disabled={controlsDisabled}
-          className="h-9 w-full rounded-control border border-line bg-ink px-3 text-sm text-ivory disabled:cursor-not-allowed disabled:opacity-40"
-          onChange={(event) => {
-            const parsed = parseUsageToken(event.target.value);
+          onChange={(next) => {
+            const parsed = parseUsageToken(next);
             if (!parsed) {
               onInvalid('That usage could not be read.');
               return;
             }
             onUsage(parsed.usage, parsed.media);
           }}
-        >
-          {layer === 'fn' ? <option value="0x00">Firmware default (no override)</option> : null}
-          {OPTION_GROUPS.map((group) => (
-            <optgroup key={group.label} label={group.label}>
-              {group.options.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-          {custom ? (
-            <option value={token}>
-              {usageLabel(row.usage, row.media)} ({token})
-            </option>
-          ) : null}
-        </select>
+        />
       </div>
 
       <div className="mt-4 space-y-1.5">
@@ -206,13 +206,14 @@ export function KeyInspector({
           </label>
           <span className="font-mono text-[10px] text-muted/70">offset {row.idx * 4}</span>
         </div>
-        <input
+        <Input
           id="key-raw"
           key={token}
           defaultValue={token}
           spellCheck={false}
+          aria-label="Raw usage"
           disabled={controlsDisabled}
-          className="h-9 w-full rounded-control border border-line bg-ink px-3 font-mono text-xs text-ivory disabled:cursor-not-allowed disabled:opacity-40"
+          className="font-mono text-xs"
           onBlur={(event) => commitRaw(event.currentTarget)}
           onKeyDown={(event) => {
             if (event.key === 'Enter') event.currentTarget.blur();

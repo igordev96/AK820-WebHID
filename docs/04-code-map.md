@@ -11,7 +11,8 @@ index.html               Vite entry, mounts /src/main.tsx
 src/main.tsx             React root, fonts and global styles
 src/App.tsx              page composition, upload and restore, drawer state
 src/styles/globals.css   colour, type and radius tokens, bench mat, base styles
-src/components/ui/       Button, Popover, Calendar, Tabs, Checkbox, Slider, Select, ToggleGroup
+src/components/ui/       Button, Input, Popover, Calendar, Tabs, Checkbox, Slider, Select,
+                         Command, Combobox, ToggleGroup
 src/lib/keymap/          constants, factory keys, record encoding, names, parsing, table
 src/lib/hid/             protocol, client, collections, WebHID types, transfer, time, probes, raw
 src/lib/screen/          RGB565, frame layout, animation payload
@@ -156,9 +157,11 @@ Visual states are separate: brass edge and brass legend mean "differs from facto
 means "not uploaded", an ivory edge means "selected", and a dashed cap means "firmware-owned on the
 Fn layer". Brass is never used as decoration, because the legend gives it meaning.
 
-The inspector mirrors the board and is the only place that edits a usage. The layer tabs switch
-between `top` and `fn`. The pending bar stages the upload, and the restore confirmation lives
-beside it. The log drawer keeps every transport line.
+The inspector mirrors the board and is the only place that edits a usage. The `Sends` picker is a
+searchable combobox grouped by the usage table, so a keyboard key, a media key or the Fn default
+is a few letters away instead of a scroll through 200 rows. Its raw field accepts a token like
+`0x04` or `c:0xE2`. The layer tabs switch between `top` and `fn`. The pending bar stages the
+upload, and the restore confirmation lives beside it. The log drawer keeps every transport line.
 
 `ViewTabs` switches the workbench between the board and the screen. The screen view keeps the same
 two-column grid: the 128 × 128 preview takes the board's place, and `ClockCard` takes the
