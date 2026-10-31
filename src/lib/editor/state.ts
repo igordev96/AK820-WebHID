@@ -1,13 +1,7 @@
 import { FACTORY_KEYS, FN_LOCKED } from '@/lib/keymap';
 import type { MapEntry } from '@/lib/keymap';
-import type {
-  EditorRow,
-  EditorState,
-  EditorStats,
-  FnOverride,
-  Layer,
-  UsageValidation,
-} from './types';
+import { EMPTY_LAYERS, type StoredLayers } from './persistence';
+import type { EditorRow, EditorState, EditorStats, Layer, UsageValidation } from './types';
 
 const hex = (value: number) =>
   value
@@ -15,16 +9,10 @@ const hex = (value: number) =>
     .toUpperCase()
     .padStart(value > 0xff ? 4 : 2, '0');
 
-export function createInitialState(
-  overrides: ReadonlyMap<number, FnOverride> = new Map(),
-  topLayer: {
-    readonly draft?: ReadonlyMap<number, FnOverride>;
-    readonly applied?: ReadonlyMap<number, FnOverride>;
-  } = {},
-): EditorState {
+export function createInitialState(layers: StoredLayers = EMPTY_LAYERS): EditorState {
   const top = FACTORY_KEYS.map((key) => {
-    const draft = topLayer.draft?.get(key.idx);
-    const applied = topLayer.applied?.get(key.idx);
+    const draft = layers.top.draft.get(key.idx);
+    const applied = layers.top.applied.get(key.idx);
 
     return {
       ...key,
@@ -38,18 +26,17 @@ export function createInitialState(
   });
 
   const fn = FACTORY_KEYS.map((key) => {
-    const override = overrides.get(key.idx);
-    const usage = override?.usage ?? 0;
-    const media = override?.media ?? false;
+    const draft = layers.fn.draft.get(key.idx);
+    const applied = layers.fn.applied.get(key.idx);
 
     return {
       ...key,
-      usage,
-      media,
+      usage: draft?.usage ?? 0,
+      media: draft?.media ?? false,
       factory: 0,
       factoryMedia: false,
-      applied: usage,
-      appliedMedia: media,
+      applied: applied?.usage ?? 0,
+      appliedMedia: applied?.media ?? false,
     };
   });
 

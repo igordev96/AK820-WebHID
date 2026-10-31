@@ -80,4 +80,27 @@ describe('App', () => {
     expect(screen.getByLabelText('Sends')).toHaveTextContent('Media: Mute (c:0xE2)');
     expect(screen.getByText('Change pending')).toBeInTheDocument();
   });
+
+  it('remembers a pending Fn edit the same way', async () => {
+    const user = userEvent.setup();
+    const first = render(<App />);
+
+    await user.click(screen.getByRole('tab', { name: /fn layer/i }));
+    const board = screen.getByRole('group', { name: /keyboard board/i });
+    await user.click(within(board).getByRole('button', { name: 'A' }));
+    await user.click(screen.getByLabelText('Sends'));
+    await user.type(screen.getByLabelText('Search a key or usage'), 'mute');
+    await user.click(await screen.findByRole('option', { name: 'Media: Mute (c:0xE2)' }));
+
+    expect(screen.getByText('Change pending')).toBeInTheDocument();
+    first.unmount();
+
+    render(<App />);
+    await user.click(screen.getByRole('tab', { name: /fn layer/i }));
+    const restored = screen.getByRole('group', { name: /keyboard board/i });
+    await user.click(within(restored).getByRole('button', { name: 'A' }));
+
+    expect(screen.getByLabelText('Sends')).toHaveTextContent('Media: Mute (c:0xE2)');
+    expect(screen.getByText('Change pending')).toBeInTheDocument();
+  });
 });

@@ -1,14 +1,36 @@
 import { FACTORY_KEYS } from '@/lib/keymap';
-import type { EditorRow, FnOverride } from './types';
+import type { EditorRow, EditorState, FnOverride } from './types';
 
+export const LAYERS_STORE = 'ak820.layers';
+
+/** Keys written by earlier versions. Read once, then removed. */
 export const FN_STORE = 'ak820.fn.overrides';
 export const TOP_STORE = 'ak820.top.layer';
+
+const LEGACY_KEYS = [FN_STORE, TOP_STORE] as const;
+const VERSION = 1;
 
 export type StorageLike = {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
   removeItem(key: string): void;
 };
+
+export type LayerRows = {
+  /** What the editor shows. */
+  readonly draft: ReadonlyMap<number, FnOverride>;
+  /** What the last confirmed upload sent from this browser. */
+  readonly applied: ReadonlyMap<number, FnOverride>;
+};
+
+export type StoredLayers = {
+  readonly top: LayerRows;
+  readonly fn: LayerRows;
+};
+
+const emptyLayer = (): LayerRows => ({ draft: new Map(), applied: new Map() });
+
+export const EMPTY_LAYERS: StoredLayers = { top: emptyLayer(), fn: emptyLayer() };
 
 const KEY_INDICES: ReadonlySet<number> = new Set(FACTORY_KEYS.map((key) => key.idx));
 
@@ -20,20 +42,24 @@ const safeRead = (storage: StorageLike, key: string): string | null => {
   }
 };
 
-/** Reads `[idx, usage]` or `[idx, usage, 1]` rows, dropping anything unusable. */
-function readRows(text: string | null): Map<number, FnOverride> {
-  const overrides = new Map<number, FnOverride>();
-  let rows: unknown;
-
+const parse = (text: string | null): unknown => {
+  if (!text) return null;
   try {
-    rows = JSON.parse(text ?? '[]');
+    return JSON.parse(text);
   } catch {
-    return overrides;
+    return null;
   }
+};
 
-  if (!Array.isArray(rows)) return overrides;
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
-  for (const row of rows) {
+/** Reads `[idx, usage]` or `[idx, usage, 1]` rows, dropping anything unusable. */
+function readRows(raw: unknown): Map<number, FnOverride> {
+  const overrides = new Map<number, FnOverride>();
+  if (!Array.isArray(raw)) return overrides;
+
+  for (const row of raw) {
     if (!Array.isArray(row)) continue;
 
     const [rawIdx, rawUsage, flag] = row as unknown[];
@@ -52,68 +78,62 @@ function readRows(text: string | null): Map<number, FnOverride> {
   return overrides;
 }
 
-export function loadFnOverrides(storage: StorageLike): Map<number, FnOverride> {
-  return readRows(safeRead(storage, FN_STORE));
+function readLayer(raw: unknown): LayerRows {
+  if (!isRecord(raw)) return emptyLayer();
+  return { draft: readRows(raw.draft), applied: readRows(raw.applied) };
 }
-
-export function saveFnOverrides(storage: StorageLike, rows: readonly EditorRow[]): void {
-  const data = rows
-    .filter((row) => row.usage > 0)
-    .map((row) => (row.media ? [row.idx, row.usage, 1] : [row.idx, row.usage]));
-
-  if (data.length) storage.setItem(FN_STORE, JSON.stringify(data));
-  else storage.removeItem(FN_STORE);
-}
-
-export type TopLayer = {
-  /** What the editor shows. */
-  readonly draft: ReadonlyMap<number, FnOverride>;
-  /** What the last confirmed upload sent from this browser. */
-  readonly applied: ReadonlyMap<number, FnOverride>;
-};
-
-const EMPTY_LAYER: TopLayer = { draft: new Map(), applied: new Map() };
 
 /**
- * The top layer is stored as two sets of overrides: the draft you were editing
- * and the table the last commit accepted. Keeping them apart is what makes the
- * pending mark honest after a reload.
+ * Earlier versions kept the Fn overrides and the top layer in separate keys and
+ * separate shapes, and the Fn rows were only ever written after an upload. Both
+ * arrive here as one layer object, with the two halves equal to the uploaded
+ * table.
  */
-export function loadTopLayer(storage: StorageLike): TopLayer {
-  let raw: unknown;
-  try {
-    raw = JSON.parse(safeRead(storage, TOP_STORE) ?? 'null');
-  } catch {
-    return EMPTY_LAYER;
-  }
-
-  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return EMPTY_LAYER;
-  const record = raw as Record<string, unknown>;
+function readLegacy(storage: StorageLike): StoredLayers {
+  const fnRows = readRows(parse(safeRead(storage, FN_STORE)));
+  const top = parse(safeRead(storage, TOP_STORE));
+  const topLayer = isRecord(top) ? readLayer(top) : emptyLayer();
 
   return {
-    draft: readRows(JSON.stringify(record.draft ?? [])),
-    applied: readRows(JSON.stringify(record.applied ?? [])),
+    top: topLayer,
+    fn: { draft: new Map(fnRows), applied: new Map(fnRows) },
   };
 }
 
-const changedFromFactory = (row: EditorRow) =>
-  row.usage !== row.factory || row.media !== row.factoryMedia;
+export function loadLayers(storage: StorageLike): StoredLayers {
+  const current = parse(safeRead(storage, LAYERS_STORE));
 
-const appliedDiffersFromFactory = (row: EditorRow) =>
-  row.applied !== row.factory || row.appliedMedia !== row.factoryMedia;
-
-export function saveTopLayer(storage: StorageLike, rows: readonly EditorRow[]): void {
-  const draft = rows
-    .filter(changedFromFactory)
-    .map((row) => (row.media ? [row.idx, row.usage, 1] : [row.idx, row.usage]));
-  const applied = rows
-    .filter(appliedDiffersFromFactory)
-    .map((row) => (row.appliedMedia ? [row.idx, row.applied, 1] : [row.idx, row.applied]));
-
-  if (!draft.length && !applied.length) {
-    storage.removeItem(TOP_STORE);
-    return;
+  if (isRecord(current)) {
+    return { top: readLayer(current.top), fn: readLayer(current.fn) };
   }
 
-  storage.setItem(TOP_STORE, JSON.stringify({ draft, applied }));
+  return readLegacy(storage);
+}
+
+function rowsOf(rows: readonly EditorRow[]) {
+  const draft = rows
+    .filter((row) => row.usage !== row.factory || row.media !== row.factoryMedia)
+    .map((row) => (row.media ? [row.idx, row.usage, 1] : [row.idx, row.usage]));
+  const applied = rows
+    .filter((row) => row.applied !== row.factory || row.appliedMedia !== row.factoryMedia)
+    .map((row) => (row.appliedMedia ? [row.idx, row.applied, 1] : [row.idx, row.applied]));
+
+  return { draft, applied };
+}
+
+/**
+ * Writes both layers in one object. Each layer keeps the draft and the table the
+ * last commit sent, because the app cannot read the keyboard back: the pending
+ * mark has to survive a reload to stay honest.
+ */
+export function saveLayers(storage: StorageLike, state: Pick<EditorState, 'top' | 'fn'>): void {
+  const top = rowsOf(state.top);
+  const fn = rowsOf(state.fn);
+  const empty = !top.draft.length && !top.applied.length && !fn.draft.length && !fn.applied.length;
+
+  if (empty) storage.removeItem(LAYERS_STORE);
+  else storage.setItem(LAYERS_STORE, JSON.stringify({ version: VERSION, top, fn }));
+
+  // The old keys are superseded; only drop them once the write above succeeded.
+  for (const key of LEGACY_KEYS) storage.removeItem(key);
 }

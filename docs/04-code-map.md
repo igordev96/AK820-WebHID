@@ -144,16 +144,23 @@ uploaded            copy usage/media into applied/appliedMedia
 replace             swap in a whole state (restore confirmation)
 ```
 
-`applied` moves only on `uploaded`, which `App` dispatches after a `commit 0x01`. `saveFnOverrides`
-runs in the same success branch. `src/lib/editor/persistence.ts` stores Fn rows as
-`[idx, usage]` or `[idx, usage, 1]` for media under `ak820.fn.overrides`.
+`applied` moves only on `uploaded`, which `App` dispatches after a `commit 0x01`.
+`src/lib/editor/persistence.ts` stores both layers in one object under `ak820.layers`:
 
-The top layer is stored under `ak820.top.layer` as `{ draft, applied }`, both written as the same
-`[idx, usage, 1]` rows, and only for keys that differ from the factory table. `App` writes it from
-an effect on `state.top`, which changes for a draft edit and again when `uploaded` moves `applied`;
-that is why a reload can show a pending change without ever implying it reached the keyboard.
-`createInitialState` takes the top layer as a second argument and seeds `usage` from `draft` and
+```json
+{ "version": 1, "top": { "draft": [], "applied": [] }, "fn": { "draft": [], "applied": [] } }
+```
+
+Each half holds `[idx, usage]` or `[idx, usage, 1]` rows, only for keys that differ from that
+layer's factory value. `App` writes the object from an effect on the editor state, so a draft edit
+is remembered at once and `applied` is remembered when `uploaded` moves it. That is why a reload
+can show a pending change on either layer without implying it reached the keyboard.
+`createInitialState` takes the loaded object and seeds each row's `usage` from `draft` and
 `applied` from `applied`.
+
+The older keys, `ak820.fn.overrides` and `ak820.top.layer`, are still read once when the new object
+is missing, then removed after the first successful write. The Fn rows arrive as both halves, which
+matches how that version only ever stored uploaded overrides.
 
 ## 6. UI
 
@@ -234,7 +241,7 @@ app busy flag through `onBusyChange`.
 | `src/lib/hid/mailboxProbe.test.ts` | probe lines and conclusions |
 | `src/lib/hid/raw.test.ts` | hex parsing, chunking, reply listening |
 | `src/lib/editor/state.test.ts` | reducer, pending count, validation, map apply |
-| `src/lib/editor/persistence.test.ts` | load, save, legacy rows, media migration, top draft/applied |
+| `src/lib/editor/persistence.test.ts` | one stored object, draft/applied, legacy migration |
 | `src/features/device/useDevice.test.ts` | chooser, open, disconnect, no config interface |
 | `src/features/editor/*.test.tsx` | board, inspector, staging bar |
 | `src/features/advanced/AdvancedDrawer.test.tsx` | each tab, close paths, busy state |

@@ -55,13 +55,29 @@ describe('createInitialState', () => {
     });
   });
 
-  it('hydrates stored Fn overrides as already applied', () => {
-    const state = createInitialState(new Map([[55, { usage: 0xe2, media: true }]]));
+  it('hydrates stored layers, keeping the draft and the applied table apart', () => {
+    const state = createInitialState({
+      top: { draft: new Map(), applied: new Map() },
+      fn: {
+        draft: new Map([[55, { usage: 0xe2, media: true }]]),
+        applied: new Map([[55, { usage: 0xe2, media: true }]]),
+      },
+    });
     const fnCaps = state.fn.find((row) => row.idx === 55);
     const topCaps = state.top.find((row) => row.idx === 55);
 
     expect(fnCaps).toMatchObject({ usage: 0xe2, media: true, applied: 0xe2, appliedMedia: true });
     expect(topCaps).toMatchObject({ usage: 0x39, media: false });
+  });
+
+  it('shows a stored draft as pending when it was never uploaded', () => {
+    const state = createInitialState({
+      top: { draft: new Map([[55, { usage: 0x04, media: false }]]), applied: new Map() },
+      fn: { draft: new Map(), applied: new Map() },
+    });
+    const topCaps = state.top.find((row) => row.idx === 55);
+
+    expect(topCaps).toMatchObject({ usage: 0x04, applied: 0x39 });
   });
 });
 

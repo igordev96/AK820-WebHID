@@ -30,10 +30,8 @@ import {
   getActiveRows,
   getPendingCount,
   getSelectedRow,
-  loadFnOverrides,
-  loadTopLayer,
-  saveFnOverrides,
-  saveTopLayer,
+  loadLayers,
+  saveLayers,
   validateUsage,
   type EditorRow,
   type EditorState,
@@ -75,7 +73,7 @@ function PanelLoading({ label }: { label: string }) {
 function loadInitialState(storage: StorageLike | null): EditorState {
   if (!storage) return createInitialState();
   try {
-    return createInitialState(loadFnOverrides(storage), loadTopLayer(storage));
+    return createInitialState(loadLayers(storage));
   } catch {
     return createInitialState();
   }
@@ -94,20 +92,24 @@ export function App() {
   const [state, dispatch] = useReducer(editorReducer, storage, loadInitialState);
   const { entries, log, clear: clearLog } = useLog();
 
-  // The draft lives here, not in the keyboard: reloading must show the same
-  // pending changes. `applied` only moves on a confirmed commit, so the pending
-  // mark stays honest across a reload.
+  // Both layers live in this state, not in the keyboard: reloading must show the
+  // same pending changes. `applied` only moves on a confirmed commit, so the
+  // pending mark stays honest across a reload.
   useEffect(() => {
     if (!storage) return;
     try {
-      saveTopLayer(storage, state.top);
+      saveLayers(storage, state);
     } catch {
-      // Storage can be full or blocked; the editor still works for this visit.
+      if (!storageWarning.current) {
+        storageWarning.current = true;
+        log('This browser cannot remember edits. They will be lost on reload.', 'warn');
+      }
     }
-  }, [state.top, storage]);
+  }, [state, storage, log]);
   const device = useDevice({ log });
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
+  const storageWarning = useRef(false);
   const [confirming, setConfirming] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   // The drawer mounts on first use and stays mounted, so closing it can animate
@@ -166,19 +168,8 @@ export function App() {
         const status = commit?.reply.status ?? null;
 
         if (status === STATUS.ok) {
+          // The settings effect writes both layers once `applied` moves here.
           dispatch({ type: 'replace', state: afterState });
-
-          if (layer === 'fn') {
-            if (storage) {
-              try {
-                saveFnOverrides(storage, afterState.fn);
-              } catch {
-                log('Could not remember the Fn overrides in this browser.', 'warn');
-              }
-            } else {
-              log('This browser cannot remember Fn overrides.', 'warn');
-            }
-          }
 
           log(`Upload accepted. The ${layer === 'fn' ? 'Fn layer' : 'top layer'} is live.`, 'ok');
           return true;
@@ -197,7 +188,7 @@ export function App() {
         setBusy(false);
       }
     },
-    [dispatch, log, storage, transfer],
+    [dispatch, log, transfer],
   );
 
   const handleUsage = useCallback(

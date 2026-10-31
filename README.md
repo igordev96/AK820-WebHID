@@ -173,11 +173,14 @@ so a reload returns you to the same place with the same light. They are read bac
 a value that stops making sense, such as an effect that no longer exists, falls back to its
 default instead of breaking the page.
 
-Top-layer edits are stored under `ak820.top.layer`, in two parts: the draft you were editing and
-the table the last confirmed upload sent. A reload shows your draft, and any key the keyboard has
-not been told about stays marked as pending and counts in **Upload changes**. The second part only
-moves when a commit succeeds, so the board never claims a change reached the keyboard when it did
-not.
+Both keymap layers are stored together under `ak820.layers`, each in two parts: the draft you were
+editing and the table the last confirmed upload sent. A reload shows your drafts on the top layer
+and on the Fn layer, and any key the keyboard has not been told about stays marked as pending and
+counts in **Upload changes**. The second part only moves when a commit succeeds, so the board never
+claims a change reached the keyboard when it did not.
+
+An older version kept the two layers in separate keys. They are read once and rewritten in the
+current shape on the first change.
 
 The log is deliberately not kept: lines from an earlier session would describe a device state this
 page never saw.
