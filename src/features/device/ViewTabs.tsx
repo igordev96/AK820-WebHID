@@ -1,4 +1,4 @@
-import { TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TabRow } from '@/components/tab-row';
 import type { View } from '@/lib/settings';
 
 export type { View };
@@ -17,16 +17,5 @@ type ViewTabsProps = {
 export function ViewTabs({ view, disabled }: ViewTabsProps) {
   const active = views.find((item) => item.id === view) ?? views[0];
 
-  return (
-    <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
-      <TabsList aria-label="View">
-        {views.map((item) => (
-          <TabsTrigger key={item.id} value={item.id} disabled={disabled}>
-            {item.label}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-      <p className="max-w-md text-xs text-muted sm:text-right">{active.note}</p>
-    </div>
-  );
+  return <TabRow label="View" items={views} note={active.note} disabled={disabled} />;
 }

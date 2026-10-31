@@ -1,7 +1,8 @@
 import type * as React from 'react';
 import { keycapLabel } from '@/features/editor/keyLabels';
-import { FACTORY_KEYS } from '@/lib/keymap';
-import { LIGHT_BOARD_HEIGHT, LIGHT_BOARD_WIDTH, lightMotion, lightPhase } from '@/lib/lighting';
+import { BOARD_HEIGHT, BOARD_WIDTH, FACTORY_KEYS } from '@/lib/keymap';
+import { lightMotion, lightPhase } from '@/lib/lighting';
+import { cn } from '@/lib/utils';
 
 type LightPreviewProps = {
   color: string;
@@ -14,8 +15,8 @@ type LightPreviewProps = {
 };
 
 const PAD = 12;
-const WIDTH = LIGHT_BOARD_WIDTH;
-const HEIGHT = LIGHT_BOARD_HEIGHT;
+const WIDTH = BOARD_WIDTH;
+const HEIGHT = BOARD_HEIGHT;
 const FACTORS = [0.22, 0.38, 0.54, 0.7, 0.9];
 
 const mix = (channel: number, factor: number) => Math.round(16 + (channel - 16) * factor);
@@ -38,14 +39,14 @@ export function LightPreview({
 
   const solid = `rgb(${mix(red, factor)} ${mix(green, factor)} ${mix(blue, factor)})`;
   const full = `rgb(${red} ${green} ${blue})`;
-  const fill = off ? '#1b2129' : colorful || motion === 'hue' ? 'url(#light-rainbow)' : solid;
-  const ink = off
-    ? '#929ba8'
+  const fill = off ? undefined : colorful || motion === 'hue' ? 'url(#light-rainbow)' : solid;
+  const inkClass = off
+    ? 'fill-muted'
     : colorful ||
         motion === 'hue' ||
         luminance(mix(red, factor), mix(green, factor), mix(blue, factor)) > 140
-      ? '#0f1216'
-      : '#f2ecdf';
+      ? 'fill-ink'
+      : 'fill-ivory';
 
   const duration = Math.max(1, 7 / speed);
   const dim = 0.18 + brightness * 0.05;
@@ -97,9 +98,8 @@ export function LightPreview({
         width={WIDTH + PAD * 2}
         height={HEIGHT + PAD * 2}
         rx="16"
-        fill="#10151b"
-        stroke="#303845"
         strokeWidth="1"
+        className="fill-bench stroke-line"
       />
 
       <g
@@ -129,7 +129,7 @@ export function LightPreview({
                 fill={animated && motion !== 'hue' && !colorful ? full : fill}
                 stroke="rgba(0,0,0,0.35)"
                 strokeWidth="1"
-                className={className}
+                className={cn(off ? 'fill-surface-2' : undefined, className)}
                 style={animated ? { animationDelay: `${delay}s` } : undefined}
               />
               <text
@@ -138,9 +138,11 @@ export function LightPreview({
                 textAnchor="middle"
                 dominantBaseline="central"
                 fontSize={size}
-                fill={ink}
                 fillOpacity="0.85"
-                className={/^[A-Za-z]/.test(label) ? 'font-sans font-medium' : 'font-mono'}
+                className={cn(
+                  inkClass,
+                  /^[A-Za-z]/.test(label) ? 'font-sans font-medium' : 'font-mono',
+                )}
               >
                 {label}
               </text>

@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { StatusNote } from '@/components/status-note';
 import { buildTimePacket, formatClock } from '@/lib/hid';
 import type { ClockMode } from '@/lib/settings';
 import { DateTimePicker } from './DateTimePicker';
@@ -84,19 +85,19 @@ export function ClockCard({
 
       <div aria-live="polite" className="min-h-5">
         {status.kind === 'ok' ? (
-          <p className="mt-2 flex items-center gap-2 text-xs text-sage">
-            <span aria-hidden="true" className="size-1.5 rounded-full bg-sage" />
+          <StatusNote tone="ok" className="mt-2">
             Sent. The screen clock is set to {formatClock(status.at)}.
-          </p>
+          </StatusNote>
         ) : null}
         {status.kind === 'err' ? (
-          <p className="mt-2 flex items-start gap-2 text-xs text-rust">
-            <span aria-hidden="true" className="mt-1.5 size-1.5 shrink-0 rounded-full bg-rust" />
+          <StatusNote tone="err" className="mt-2">
             {status.message}
-          </p>
+          </StatusNote>
         ) : null}
         {!connected && status.kind === 'idle' ? (
-          <p className="mt-2 text-xs text-muted">Connect the keyboard to send the time.</p>
+          <StatusNote tone="muted" className="mt-2">
+            Connect the keyboard to send the time.
+          </StatusNote>
         ) : null}
       </div>
 

@@ -13,6 +13,7 @@ src/App.tsx              page composition, upload and restore, drawer state
 src/styles/globals.css   colour, type and radius tokens, bench mat, base styles
 src/components/ui/       Button, Input, Popover, Calendar, Tabs, Checkbox, Slider, Select,
                          Command, Combobox, ToggleGroup, Sheet
+src/components/          StatusNote, TabRow
 src/lib/keymap/          constants, factory keys, record encoding, names, parsing, table
 src/lib/hid/             protocol, client, collections, WebHID types, transfer, time, probes, raw
 src/lib/screen/          RGB565, frame layout, animation payload
@@ -150,8 +151,14 @@ runs in the same success branch. `src/lib/editor/persistence.ts` stores Fn rows 
 ## 6. UI
 
 The board is data-driven from `FACTORY_KEYS`. Each key is an absolutely positioned button at
-`x/y/w/h` on a 624 × 250 canvas. A `ResizeObserver` scales the canvas between 0.6× and 1.45× to fit
+`x/y/w/h` on the `BOARD_WIDTH × BOARD_HEIGHT` canvas, which both boards take from
+`src/lib/keymap/factoryKeys.ts`. A `ResizeObserver` scales the canvas between 0.6× and 1.45× to fit
 its container. Keys are not re-laid out on mobile; the whole board scales.
+
+The view tabs and the layer tabs are the same control, so both render through `TabRow`. A result
+under a send button is a `StatusNote`: one dot, one sentence, and a colour that says whether the
+keyboard accepted it. `LightPreview` paints from the theme tokens with `fill-*` and `stroke-*`
+utilities, so a palette change reaches it too.
 
 Visual states are separate: brass edge and brass legend mean "differs from factory", a brass dot
 means "not uploaded", an ivory edge means "selected", and a dashed cap means "firmware-owned on the

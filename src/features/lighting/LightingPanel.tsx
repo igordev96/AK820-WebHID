@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from 'lucide-react';
+import { StatusNote } from '@/components/status-note';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -213,28 +214,25 @@ export function LightingPanel({ connected, busy, status, onApply }: LightingPane
 
           <div className="mt-4">
             <Button disabled={!connected || busy} onClick={() => onApply(values)}>
-              {busy ? 'Sendingâ€¦' : 'Apply light'}
+              {busy ? 'Sending…' : 'Apply light'}
             </Button>
           </div>
 
           <div aria-live="polite">
             {status.kind === 'ok' ? (
-              <p className="mt-3 flex items-center gap-2 text-xs text-sage">
-                <span aria-hidden="true" className="size-1.5 rounded-full bg-sage" />
+              <StatusNote tone="ok" className="mt-3">
                 {status.message}
-              </p>
+              </StatusNote>
             ) : null}
             {status.kind === 'err' ? (
-              <p className="mt-3 flex items-start gap-2 text-xs text-rust">
-                <span
-                  aria-hidden="true"
-                  className="mt-1.5 size-1.5 shrink-0 rounded-full bg-rust"
-                />
+              <StatusNote tone="err" className="mt-3">
                 {status.message}
-              </p>
+              </StatusNote>
             ) : null}
             {!connected && status.kind === 'idle' ? (
-              <p className="mt-3 text-xs text-muted">Connect the keyboard to change the light.</p>
+              <StatusNote tone="muted" className="mt-3">
+                Connect the keyboard to change the light.
+              </StatusNote>
             ) : null}
           </div>
 

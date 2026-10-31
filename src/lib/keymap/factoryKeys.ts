@@ -1,5 +1,9 @@
 import type { FactoryKey } from './types';
 
+/** The canvas every board drawing uses: the keymap and the light preview. */
+export const BOARD_WIDTH = 624;
+export const BOARD_HEIGHT = 250;
+
 export const FACTORY_KEYS = [
   { idx: 1, usage: 0x29, name: 'Esc', x: 0, y: 0, w: 28, h: 28 },
   { idx: 2, usage: 0x3a, name: 'F1', x: 46, y: 0, w: 28, h: 28 },

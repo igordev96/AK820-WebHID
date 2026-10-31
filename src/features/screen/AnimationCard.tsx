@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { StatusNote } from '@/components/status-note';
 import {
   SCREEN_BLOCKS_PER_FRAME,
   SCREEN_HEIGHT,
@@ -208,19 +209,19 @@ export function AnimationCard({
 
       <div aria-live="polite">
         {status.kind === 'ok' ? (
-          <p className="mt-3 flex items-center gap-2 text-xs text-sage">
-            <span aria-hidden="true" className="size-1.5 rounded-full bg-sage" />
+          <StatusNote tone="ok" className="mt-3">
             {status.message}
-          </p>
+          </StatusNote>
         ) : null}
         {status.kind === 'err' ? (
-          <p className="mt-3 flex items-start gap-2 text-xs text-rust">
-            <span aria-hidden="true" className="mt-1.5 size-1.5 shrink-0 rounded-full bg-rust" />
+          <StatusNote tone="err" className="mt-3">
             {status.message}
-          </p>
+          </StatusNote>
         ) : null}
         {!connected && status.kind === 'idle' && !picked ? (
-          <p className="mt-3 text-xs text-muted">Connect the keyboard to send an animation.</p>
+          <StatusNote tone="muted" className="mt-3">
+            Connect the keyboard to send an animation.
+          </StatusNote>
         ) : null}
         {connected && !screenReady ? (
           <p className="mt-2 text-[11px] leading-relaxed text-rust">

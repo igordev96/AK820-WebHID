@@ -1,5 +1,4 @@
-export const LIGHT_BOARD_WIDTH = 624;
-export const LIGHT_BOARD_HEIGHT = 250;
+﻿import { BOARD_HEIGHT, BOARD_WIDTH } from '../keymap/factoryKeys';
 
 export type LightMotion =
   | 'none'
@@ -47,23 +46,23 @@ export function lightPhase(
 ): number {
   if (motion === 'row') {
     const up = fixedUp(mode) || (!fixedDown(mode) && direction === 2);
-    return up ? key.y / LIGHT_BOARD_HEIGHT : 1 - key.y / LIGHT_BOARD_HEIGHT;
+    return up ? key.y / BOARD_HEIGHT : 1 - key.y / BOARD_HEIGHT;
   }
 
   if (motion === 'column') {
-    return direction === 0 ? 1 - key.x / LIGHT_BOARD_WIDTH : key.x / LIGHT_BOARD_WIDTH;
+    return direction === 0 ? 1 - key.x / BOARD_WIDTH : key.x / BOARD_WIDTH;
   }
 
   if (motion === 'radial') {
-    const dx = key.x + key.w / 2 - LIGHT_BOARD_WIDTH / 2;
-    const dy = key.y + key.h / 2 - LIGHT_BOARD_HEIGHT / 2;
+    const dx = key.x + key.w / 2 - BOARD_WIDTH / 2;
+    const dy = key.y + key.h / 2 - BOARD_HEIGHT / 2;
     return Math.min(1, Math.hypot(dx, dy) / 340);
   }
 
   if (motion === 'rotate') {
     const angle = Math.atan2(
-      key.y + key.h / 2 - LIGHT_BOARD_HEIGHT / 2,
-      key.x + key.w / 2 - LIGHT_BOARD_WIDTH / 2,
+      key.y + key.h / 2 - BOARD_HEIGHT / 2,
+      key.x + key.w / 2 - BOARD_WIDTH / 2,
     );
     const norm = (angle + Math.PI) / (Math.PI * 2);
     return direction === 1 ? 1 - norm : norm;

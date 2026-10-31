@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { EditorRow, Layer } from '@/lib/editor';
-import { FN_LOCKED, usageLabel } from '@/lib/keymap';
+import { BOARD_HEIGHT, BOARD_WIDTH, FN_LOCKED, usageLabel } from '@/lib/keymap';
 import { cn } from '@/lib/utils';
 import { isSymbolLabel, keycapLabel } from './keyLabels';
 
-const BOARD_WIDTH = 624;
-const BOARD_HEIGHT = 250;
 const MAX_SCALE = 1.45;
 const MIN_SCALE = 0.6;
 
@@ -41,7 +39,9 @@ export function KeymapBoard({ rows, layer, selected, disabled, onSelect }: Keyma
         <p className="text-[11px] text-muted">
           {layer === 'fn' ? 'Fn layer' : 'Top layer'}, {rows.length} keys
         </p>
-        <p className="font-mono text-[10px] text-muted/70">624 × 250</p>
+        <p className="font-mono text-[10px] text-muted/70">
+          {BOARD_WIDTH} × {BOARD_HEIGHT}
+        </p>
       </div>
 
       <div
