@@ -17,16 +17,25 @@ const hex = (value: number) =>
 
 export function createInitialState(
   overrides: ReadonlyMap<number, FnOverride> = new Map(),
+  topLayer: {
+    readonly draft?: ReadonlyMap<number, FnOverride>;
+    readonly applied?: ReadonlyMap<number, FnOverride>;
+  } = {},
 ): EditorState {
-  const top = FACTORY_KEYS.map((key) => ({
-    ...key,
-    usage: key.usage,
-    media: false,
-    factory: key.usage,
-    factoryMedia: false,
-    applied: key.usage,
-    appliedMedia: false,
-  }));
+  const top = FACTORY_KEYS.map((key) => {
+    const draft = topLayer.draft?.get(key.idx);
+    const applied = topLayer.applied?.get(key.idx);
+
+    return {
+      ...key,
+      usage: draft?.usage ?? key.usage,
+      media: draft?.media ?? false,
+      factory: key.usage,
+      factoryMedia: false,
+      applied: applied?.usage ?? key.usage,
+      appliedMedia: applied?.media ?? false,
+    };
+  });
 
   const fn = FACTORY_KEYS.map((key) => {
     const override = overrides.get(key.idx);

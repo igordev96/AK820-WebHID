@@ -58,4 +58,26 @@ describe('App', () => {
 
     expect(screen.getByRole('log')).toHaveTextContent('No activity yet.');
   });
+
+  it('remembers a pending top-layer edit across a reload', async () => {
+    const user = userEvent.setup();
+    const first = render(<App />);
+    const board = screen.getByRole('group', { name: /keyboard board/i });
+
+    await user.click(within(board).getByRole('button', { name: 'CapsLock' }));
+    await user.click(screen.getByLabelText('Sends'));
+    await user.type(screen.getByLabelText('Search a key or usage'), 'mute');
+    await user.click(await screen.findByRole('option', { name: 'Media: Mute (c:0xE2)' }));
+
+    expect(screen.getByText('Change pending')).toBeInTheDocument();
+    first.unmount();
+
+    render(<App />);
+
+    const restored = screen.getByRole('group', { name: /keyboard board/i });
+    await user.click(within(restored).getByRole('button', { name: 'CapsLock' }));
+
+    expect(screen.getByLabelText('Sends')).toHaveTextContent('Media: Mute (c:0xE2)');
+    expect(screen.getByText('Change pending')).toBeInTheDocument();
+  });
 });

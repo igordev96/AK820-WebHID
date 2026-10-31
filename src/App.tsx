@@ -1,4 +1,13 @@
-import { Suspense, lazy, useCallback, useMemo, useReducer, useRef, useState } from 'react';
+import {
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { AppHeader } from '@/features/device/AppHeader';
 import { ViewTabs, type View } from '@/features/device/ViewTabs';
@@ -22,7 +31,9 @@ import {
   getPendingCount,
   getSelectedRow,
   loadFnOverrides,
+  loadTopLayer,
   saveFnOverrides,
+  saveTopLayer,
   validateUsage,
   type EditorRow,
   type EditorState,
@@ -64,7 +75,7 @@ function PanelLoading({ label }: { label: string }) {
 function loadInitialState(storage: StorageLike | null): EditorState {
   if (!storage) return createInitialState();
   try {
-    return createInitialState(loadFnOverrides(storage));
+    return createInitialState(loadFnOverrides(storage), loadTopLayer(storage));
   } catch {
     return createInitialState();
   }
@@ -82,11 +93,26 @@ export function App() {
 
   const [state, dispatch] = useReducer(editorReducer, storage, loadInitialState);
   const { entries, log, clear: clearLog } = useLog();
+
+  // The draft lives here, not in the keyboard: reloading must show the same
+  // pending changes. `applied` only moves on a confirmed commit, so the pending
+  // mark stays honest across a reload.
+  useEffect(() => {
+    if (!storage) return;
+    try {
+      saveTopLayer(storage, state.top);
+    } catch {
+      // Storage can be full or blocked; the editor still works for this visit.
+    }
+  }, [state.top, storage]);
   const device = useDevice({ log });
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [confirming, setConfirming] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  // The drawer mounts on first use and stays mounted, so closing it can animate
+  // out through Radix Presence instead of vanishing.
+  const [advancedMounted, setAdvancedMounted] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const view = useSettings((settings) => settings.view);
   const [timeStatus, setTimeStatus] = useState<TimeStatus>({ kind: 'idle' });
@@ -441,6 +467,7 @@ export function App() {
 
   const handleOpenAdvanced = useCallback(() => {
     if (!connected || busyRef.current) return;
+    setAdvancedMounted(true);
     setAdvancedOpen(true);
   }, [connected]);
 
@@ -586,10 +613,10 @@ export function App() {
         onClear={clearLog}
       />
 
-      {advancedOpen ? (
+      {advancedMounted ? (
         <Suspense fallback={null}>
           <AdvancedDrawer
-            open
+            open={advancedOpen}
             device={device.device}
             log={log}
             onClose={handleCloseAdvanced}

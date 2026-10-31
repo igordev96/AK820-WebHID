@@ -1,5 +1,12 @@
-export { FN_STORE, loadFnOverrides, saveFnOverrides } from './persistence';
-export type { StorageLike } from './persistence';
+export {
+  FN_STORE,
+  TOP_STORE,
+  loadFnOverrides,
+  loadTopLayer,
+  saveFnOverrides,
+  saveTopLayer,
+} from './persistence';
+export type { StorageLike, TopLayer } from './persistence';
 export {
   applyMapEntries,
   createInitialState,

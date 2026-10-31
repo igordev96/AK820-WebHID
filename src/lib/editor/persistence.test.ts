@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { FN_STORE, loadFnOverrides, saveFnOverrides, type StorageLike } from './persistence';
-import { createInitialState } from './state';
+import {
+  FN_STORE,
+  TOP_STORE,
+  loadFnOverrides,
+  loadTopLayer,
+  saveFnOverrides,
+  saveTopLayer,
+  type StorageLike,
+} from './persistence';
+import { createInitialState, editorReducer } from './state';
 
 class FakeStorage implements StorageLike {
   private readonly data = new Map<string, string>();
@@ -129,5 +137,112 @@ describe('saveFnOverrides', () => {
       applied: 0xe2,
       appliedMedia: true,
     });
+  });
+});
+
+describe('loadTopLayer', () => {
+  it('returns empty maps when nothing is stored', () => {
+    const layer = loadTopLayer(new FakeStorage());
+
+    expect(layer.draft.size).toBe(0);
+    expect(layer.applied.size).toBe(0);
+  });
+
+  it('reads the draft and the applied table apart', () => {
+    const storage = new FakeStorage();
+    storage.setItem(TOP_STORE, JSON.stringify({ draft: [[55, 4]], applied: [[55, 5, 1]] }));
+
+    const layer = loadTopLayer(storage);
+
+    expect(layer.draft.get(55)).toEqual({ usage: 4, media: false });
+    expect(layer.applied.get(55)).toEqual({ usage: 5, media: true });
+  });
+
+  it('drops rows for keys this board does not have', () => {
+    const storage = new FakeStorage();
+    storage.setItem(
+      TOP_STORE,
+      JSON.stringify({
+        draft: [
+          [0, 4],
+          [9999, 4],
+        ],
+      }),
+    );
+
+    expect(loadTopLayer(storage).draft.size).toBe(0);
+  });
+
+  it('survives corrupt or unexpected stored text', () => {
+    const storage = new FakeStorage();
+    storage.setItem(TOP_STORE, '{oops');
+
+    expect(loadTopLayer(storage).draft.size).toBe(0);
+
+    storage.setItem(TOP_STORE, JSON.stringify([1, 2, 3]));
+
+    expect(loadTopLayer(storage).applied.size).toBe(0);
+  });
+});
+
+describe('saveTopLayer', () => {
+  const selectRow = (state: ReturnType<typeof createInitialState>) =>
+    editorReducer(state, { type: 'select', idx: 55 });
+
+  it('keeps a pending edit and remembers it was not applied', () => {
+    const storage = new FakeStorage();
+    const edited = editorReducer(selectRow(createInitialState()), {
+      type: 'usage',
+      usage: 0x04,
+      media: false,
+    });
+
+    saveTopLayer(storage, edited.top);
+
+    expect(JSON.parse(storage.getItem(TOP_STORE) ?? 'null')).toEqual({
+      draft: [[55, 4]],
+      applied: [],
+    });
+  });
+
+  it('records an applied key only after the upload', () => {
+    const storage = new FakeStorage();
+    const edited = editorReducer(selectRow(createInitialState()), {
+      type: 'usage',
+      usage: 0x04,
+      media: false,
+    });
+    const uploaded = editorReducer(edited, { type: 'uploaded' });
+
+    saveTopLayer(storage, uploaded.top);
+
+    expect(JSON.parse(storage.getItem(TOP_STORE) ?? 'null')).toEqual({
+      draft: [[55, 4]],
+      applied: [[55, 4]],
+    });
+  });
+
+  it('clears the key when the board matches the factory again', () => {
+    const storage = new FakeStorage();
+    storage.setItem(TOP_STORE, JSON.stringify({ draft: [[55, 4]], applied: [[55, 4]] }));
+
+    saveTopLayer(storage, createInitialState().top);
+
+    expect(storage.getItem(TOP_STORE)).toBeNull();
+  });
+
+  it('round-trips a pending change through the initial state', () => {
+    const storage = new FakeStorage();
+    const edited = editorReducer(selectRow(createInitialState()), {
+      type: 'usage',
+      usage: 0x04,
+      media: false,
+    });
+    saveTopLayer(storage, editorReducer(edited, { type: 'uploaded' }).top);
+
+    const restored = createInitialState(new Map(), loadTopLayer(storage));
+    const caps = restored.top.find((row) => row.idx === 55);
+
+    expect(caps).toMatchObject({ usage: 0x04, applied: 0x04, factory: 0x39 });
   });
 });

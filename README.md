@@ -173,9 +173,14 @@ so a reload returns you to the same place with the same light. They are read bac
 a value that stops making sense, such as an effect that no longer exists, falls back to its
 default instead of breaking the page.
 
-Two things are deliberately not kept. Pending top-layer edits are dropped, because a saved table
-would look like it was already on the keyboard. The log is dropped too: lines from an earlier
-session would describe a device state this page never saw.
+Top-layer edits are stored under `ak820.top.layer`, in two parts: the draft you were editing and
+the table the last confirmed upload sent. A reload shows your draft, and any key the keyboard has
+not been told about stays marked as pending and counts in **Upload changes**. The second part only
+moves when a commit succeeds, so the board never claims a change reached the keyboard when it did
+not.
+
+The log is deliberately not kept: lines from an earlier session would describe a device state this
+page never saw.
 
 ## Recovery
 

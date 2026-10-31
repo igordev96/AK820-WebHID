@@ -148,6 +148,13 @@ replace             swap in a whole state (restore confirmation)
 runs in the same success branch. `src/lib/editor/persistence.ts` stores Fn rows as
 `[idx, usage]` or `[idx, usage, 1]` for media under `ak820.fn.overrides`.
 
+The top layer is stored under `ak820.top.layer` as `{ draft, applied }`, both written as the same
+`[idx, usage, 1]` rows, and only for keys that differ from the factory table. `App` writes it from
+an effect on `state.top`, which changes for a draft edit and again when `uploaded` moves `applied`;
+that is why a reload can show a pending change without ever implying it reached the keyboard.
+`createInitialState` takes the top layer as a second argument and seeds `usage` from `draft` and
+`applied` from `applied`.
+
 ## 6. UI
 
 The board is data-driven from `FACTORY_KEYS`. Each key is an absolutely positioned button at
@@ -195,11 +202,13 @@ reports one, and a mode that cycles through colours never promises the picker's 
 
 `AdvancedDrawer` is a `Sheet`: a Radix dialog that slides in from the right, traps focus, locks the
 page scroll and returns focus to the Advanced button on close. Escape and a click on the overlay
-both close it, and both are refused while a probe is running. Its four tabs (diagnostics, deep
-probe, mailbox, raw command) use the same `Tabs` primitive as the rest of the page, so each has a
-real panel and arrow keys move between them. It takes a `clock` prop, which is the real clock in
-the app and a fake clock in tests. Probes report through the same log and set the app busy flag
-through `onBusyChange`.
+both close it, and both are refused while a probe is running. The slide and the overlay fade are
+CSS keyframes in `globals.css`, so the drawer keeps its lazy chunk: `App` mounts it on first use
+and leaves it mounted, which is what lets Radix Presence play the exit animation. Its four tabs
+(diagnostics, deep probe, mailbox, raw command) use the same `Tabs` primitive as the rest of the
+page, so each has a real panel and arrow keys move between them. It takes a `clock` prop, which is
+the real clock in the app and a fake clock in tests. Probes report through the same log and set the
+app busy flag through `onBusyChange`.
 
 ## 7. Tests
 
@@ -225,7 +234,7 @@ through `onBusyChange`.
 | `src/lib/hid/mailboxProbe.test.ts` | probe lines and conclusions |
 | `src/lib/hid/raw.test.ts` | hex parsing, chunking, reply listening |
 | `src/lib/editor/state.test.ts` | reducer, pending count, validation, map apply |
-| `src/lib/editor/persistence.test.ts` | load, save, legacy rows, media migration |
+| `src/lib/editor/persistence.test.ts` | load, save, legacy rows, media migration, top draft/applied |
 | `src/features/device/useDevice.test.ts` | chooser, open, disconnect, no config interface |
 | `src/features/editor/*.test.tsx` | board, inspector, staging bar |
 | `src/features/advanced/AdvancedDrawer.test.tsx` | each tab, close paths, busy state |
